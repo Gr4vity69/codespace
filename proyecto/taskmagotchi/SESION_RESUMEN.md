@@ -4,7 +4,7 @@
 - React Native + Expo SDK 57, TypeScript, SQLite, Zustand, Expo Router
 - AI: Groq (Llama 3.1, gratis) para chat, Gemini 1.5 Flash (gratis) para verificación de fotos
 - Build: EAS Build cloud, APK descargado a `/workspaces/codespace/builds/`
-- Cuenta EAS: `gr4v1tys-team`, token: `9wPK2q8Ep9f3_LUJ-NFUCzwhgaNNBrLyFiZx3vdq`
+- Cuenta EAS: `gr4v1tys-team`
 - Repo: `https://github.com/Gr4vity69/codespace`
 
 ## Diseño visual (creado por ti)
