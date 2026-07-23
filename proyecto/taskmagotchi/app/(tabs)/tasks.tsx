@@ -65,7 +65,6 @@ export default function TasksScreen() {
       }
     }
     await updateTask(taskId, { status: 'verified', completedAt: Date.now() })
-    await loadTasks()
   }
 
   const filters = [

@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, Alert, Modal, Platform,
 } from 'react-native'
 import { usePetStore } from '../../src/store/petStore'
 import { generateMathChallenge, checkMathAnswer } from '../../src/utils/mathBlocker'
+import { getApiKey, setApiKey } from '../../src/services/apiKeys'
 import type { MathChallenge } from '../../src/types'
-import { getDb } from '../../src/services/database'
 import { PixelButton, RetroInputShell, RetroPanel, RetroScreen, RetroSectionTitle, retroColors } from '../../src/components/retroUi'
 
 export default function SettingsScreen() {
@@ -17,6 +17,36 @@ export default function SettingsScreen() {
   const [unlockedUntil, setUnlockedUntil] = useState<number | null>(null)
   const [renaming, setRenaming] = useState(false)
   const [newName, setNewName] = useState('')
+  const [groqKey, setGroqKey] = useState('')
+  const [geminiKey, setGeminiKey] = useState('')
+  const [keysLoaded, setKeysLoaded] = useState(false)
+  const [savingGroq, setSavingGroq] = useState(false)
+  const [savingGemini, setSavingGemini] = useState(false)
+
+  useEffect(() => {
+    async function loadKeys() {
+      const gk = await getApiKey('GROQ')
+      const gemk = await getApiKey('GEMINI')
+      if (gk) setGroqKey(gk)
+      if (gemk) setGeminiKey(gemk)
+      setKeysLoaded(true)
+    }
+    loadKeys()
+  }, [])
+
+  async function handleSaveGroqKey() {
+    setSavingGroq(true)
+    await setApiKey('GROQ', groqKey)
+    setSavingGroq(false)
+    Alert.alert('✅ Guardada', 'API key de Groq actualizada')
+  }
+
+  async function handleSaveGeminiKey() {
+    setSavingGemini(true)
+    await setApiKey('GEMINI', geminiKey)
+    setSavingGemini(false)
+    Alert.alert('✅ Guardada', 'API key de Gemini actualizada')
+  }
 
   function handleRequestUnlock() {
     if (unlockedUntil && Date.now() < unlockedUntil) {
@@ -56,8 +86,6 @@ export default function SettingsScreen() {
     await updatePet({ streak: 0, lastStreakDate: '' })
     Alert.alert('Racha reiniciada')
   }
-
-  const db = getDb()
 
   return (
     <RetroScreen>
@@ -114,10 +142,41 @@ export default function SettingsScreen() {
 
         <RetroSectionTitle>API Keys</RetroSectionTitle>
         <RetroPanel style={styles.card}>
-          <Text style={styles.settingLabel}>Groq API Key</Text>
-          <RetroInputShell style={styles.fieldSpacing}><TextInput style={styles.input} placeholder="gsk_..." placeholderTextColor={retroColors.muted} secureTextEntry /></RetroInputShell>
-          <Text style={styles.settingLabel}>Gemini API Key</Text>
-          <RetroInputShell><TextInput style={styles.input} placeholder="AIza..." placeholderTextColor={retroColors.muted} secureTextEntry /></RetroInputShell>
+          <Text style={styles.settingLabel}>Groq API Key (para chat con IA)</Text>
+          <RetroInputShell style={styles.fieldSpacing}>
+            <TextInput
+              style={styles.input}
+              value={groqKey}
+              onChangeText={setGroqKey}
+              placeholder={keysLoaded ? 'gsk_...' : 'Cargando...'}
+              placeholderTextColor={retroColors.muted}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </RetroInputShell>
+          <PixelButton onPress={handleSaveGroqKey} disabled={savingGroq || !groqKey.trim()}>
+            {savingGroq ? 'GUARDANDO...' : 'GUARDAR GROQ'}
+          </PixelButton>
+
+          <View style={{ height: 12 }} />
+
+          <Text style={styles.settingLabel}>Gemini API Key (para verificación de fotos)</Text>
+          <RetroInputShell style={styles.fieldSpacing}>
+            <TextInput
+              style={styles.input}
+              value={geminiKey}
+              onChangeText={setGeminiKey}
+              placeholder={keysLoaded ? 'AIza...' : 'Cargando...'}
+              placeholderTextColor={retroColors.muted}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </RetroInputShell>
+          <PixelButton onPress={handleSaveGeminiKey} disabled={savingGemini || !geminiKey.trim()}>
+            {savingGemini ? 'GUARDANDO...' : 'GUARDAR GEMINI'}
+          </PixelButton>
         </RetroPanel>
 
         <RetroSectionTitle>Datos</RetroSectionTitle>

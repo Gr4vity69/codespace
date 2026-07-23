@@ -14,7 +14,7 @@ function TabIcon({ name, color }: { name: string; color: ColorValue }) {
 
 export default function TabLayout() {
   return (
-    <Tabs screenOptions={{
+    <Tabs initialRouteName="tasks" screenOptions={{
       headerShown: false,
       tabBarShowLabel: false,
       tabBarActiveTintColor: retroColors.text,

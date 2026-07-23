@@ -1,3 +1,5 @@
+import { getApiKey } from './apiKeys'
+
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
 
 interface GeminiResponse {
@@ -13,7 +15,7 @@ export async function verifyTaskCompletion(
   taskTitle: string,
   taskDescription: string
 ): Promise<{ verified: boolean; reason: string }> {
-  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY
+  const apiKey = await getApiKey('GEMINI')
 
   if (!apiKey) {
     return { verified: false, reason: 'API key de Gemini no configurada' }

@@ -1,3 +1,5 @@
+import { getApiKey } from './apiKeys'
+
 const GROQ_API_BASE = 'https://api.groq.com/openai/v1/chat/completions'
 const MODEL = 'llama-3.1-8b-instant'
 
@@ -54,7 +56,7 @@ export function buildSystemPrompt(context: string): string {
 }
 
 async function callGroq(messages: GroqMessage[]): Promise<string> {
-  const apiKey = process.env.EXPO_PUBLIC_GROQ_API_KEY
+  const apiKey = await getApiKey('GROQ')
 
   if (!apiKey) {
     return 'Necesito configurar mi API key de Groq para hablar contigo. Por favor, agrégala en la configuración.'

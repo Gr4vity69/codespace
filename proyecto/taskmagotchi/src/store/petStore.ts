@@ -3,6 +3,28 @@ import type { Pet } from '../types'
 import { getDb } from '../services/database'
 import { applyDecay } from '../utils/petEngine'
 
+function createDefaultPet(): Pet {
+  const now = Date.now()
+  return {
+    id: 1,
+    name: 'Magotchi',
+    species: 'default',
+    happiness: 70,
+    hunger: 35,
+    energy: 75,
+    level: 1,
+    xp: 0,
+    xpToNextLevel: 100,
+    lastFed: now,
+    lastPlayed: now,
+    coins: 0,
+    totalEarned: 0,
+    totalSpent: 0,
+    streak: 0,
+    lastStreakDate: '',
+  }
+}
+
 interface PetState {
   pet: Pet | null
   loading: boolean
@@ -12,7 +34,7 @@ interface PetState {
 }
 
 export const usePetStore = create<PetState>((set, get) => ({
-  pet: null,
+  pet: createDefaultPet(),
   loading: true,
 
   loadPet: async () => {
@@ -48,11 +70,11 @@ export const usePetStore = create<PetState>((set, get) => ({
           get().updatePet(decayed)
         }
       } else {
-        set({ loading: false })
+        set({ pet: createDefaultPet(), loading: false })
       }
     } catch (error) {
       console.error('Error loading pet:', error)
-      set({ loading: false })
+      set({ pet: createDefaultPet(), loading: false })
     }
   },
 

@@ -33,6 +33,7 @@ export default function RootLayout() {
     <>
       <StatusBar style="light" />
       <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="chat" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="camera/[taskId]" options={{ presentation: 'modal', headerShown: false }} />
