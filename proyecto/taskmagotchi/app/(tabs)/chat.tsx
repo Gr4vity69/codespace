@@ -1,18 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  FlatList, KeyboardAvoidingView, Platform,
+  FlatList, KeyboardAvoidingView, Platform, Image,
 } from 'react-native'
-import { useRouter } from 'expo-router'
-import { sendMessage } from '../src/services/groqChat'
-import { useTaskStore } from '../src/store/taskStore'
-import type { ChatMessage, AIPlanResponse } from '../src/types'
-import { PixelButton, RetroInputShell, RetroScreen, SpeechBubble, retroColors } from '../src/components/retroUi'
+import { sendMessage } from '../../src/services/groqChat'
+import { useTaskStore } from '../../src/store/taskStore'
+import { usePetStore } from '../../src/store/petStore'
+import { getPetMood } from '../../src/utils/petEngine'
+import type { ChatMessage, AIPlanResponse } from '../../src/types'
+import { PixelButton, RetroInputShell, RetroScreen, SpeechBubble, retroColors } from '../../src/components/retroUi'
 
 export default function ChatScreen() {
-  const router = useRouter()
   const addTask = useTaskStore(s => s.addTask)
   const loadTasks = useTaskStore(s => s.loadTasks)
+  const pet = usePetStore(s => s.pet)
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -23,6 +25,9 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(false)
   const [context, setContext] = useState<'planning' | 'motivation' | 'general'>('planning')
   const flatListRef = useRef<FlatList>(null)
+
+  const mood = pet ? getPetMood(pet) : 'neutral'
+  const moodLabel = mood === 'happy' ? 'FELIZ' : mood === 'neutral' ? 'NORMAL' : mood === 'sad' ? 'TRISTE' : 'CANSADA'
 
   useEffect(() => {
     flatListRef.current?.scrollToEnd({ animated: true })
@@ -69,7 +74,7 @@ export default function ChatScreen() {
             const taskCount = plan.tasks.length
             const summary: ChatMessage = {
               role: 'assistant',
-              content: `✅ ¡Listo! He creado ${taskCount} tarea${taskCount > 1 ? 's' : ''} para ti. Revisa la sección de tareas para ver el plan detallado.`,
+              content: `✅ ¡Listo! He creado ${taskCount} tarea${taskCount > 1 ? 's' : ''} para ti. Revisa el Home para verlas.`,
             }
             setMessages(prev => [...prev, summary])
             setContext('general')
@@ -92,17 +97,21 @@ export default function ChatScreen() {
   return (
     <RetroScreen>
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
-            <Text style={styles.backBtn}>✕</Text>
-          </TouchableOpacity>
-          <View style={styles.headerMeta}>
-            <Text style={styles.headerTitle}>MAGOTCHI</Text>
-            <Text style={styles.headerSub}>assistant console</Text>
+        {/* Mascot Container */}
+        <View style={styles.mascotBar}>
+          <View style={styles.mascotFrame}>
+            {/* Placeholder sprite — will be replaced with animated pixel art */}
+            <View style={styles.spritePlaceholder}>
+              <Text style={styles.spriteEmoji}>🐼</Text>
+            </View>
+            <View style={styles.mascotInfo}>
+              <Text style={styles.mascotName}>{pet?.name?.toUpperCase() || 'MAGOTCHI'}</Text>
+              <Text style={styles.mascotMood}>{moodLabel}</Text>
+            </View>
           </View>
-          <View style={styles.headerRight} />
         </View>
 
+        {/* Messages */}
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -110,9 +119,6 @@ export default function ChatScreen() {
           contentContainerStyle={styles.messageList}
           renderItem={({ item }) => (
             <View style={[styles.messageRow, item.role === 'user' ? styles.userRow : styles.assistantRow]}>
-              <View style={[styles.avatarBadge, item.role === 'user' ? styles.userAvatar : styles.assistantAvatar]}>
-                <Text style={styles.avatarText}>{item.role === 'user' ? 'YOU' : 'AI'}</Text>
-              </View>
               <View style={styles.messageBubbleWrap}>
                 <SpeechBubble align={item.role === 'user' ? 'right' : 'left'}>
                   {item.content}
@@ -128,13 +134,14 @@ export default function ChatScreen() {
           </View>
         )}
 
+        {/* Chat Input Bar */}
         <View style={styles.inputRow}>
           <RetroInputShell style={styles.inputShell}>
             <TextInput
               style={styles.input}
               value={input}
               onChangeText={setInput}
-              placeholder="..."
+              placeholder={input ? '' : '...'}
               placeholderTextColor={retroColors.muted}
               multiline
               maxLength={500}
@@ -152,27 +159,44 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12,
+
+  // Mascot Bar
+  mascotBar: {
+    borderBottomWidth: 2,
+    borderBottomColor: retroColors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: retroColors.panel,
   },
-  closeButton: { width: 42, height: 42, borderWidth: 2, borderColor: retroColors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: retroColors.panel },
-  backBtn: { fontSize: 18, color: retroColors.text, fontFamily: 'monospace', fontWeight: '800' },
-  headerMeta: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: retroColors.text, fontFamily: 'monospace', letterSpacing: 2 },
-  headerSub: { fontSize: 10, color: retroColors.muted, fontFamily: 'monospace', letterSpacing: 1.2, marginTop: 2 },
-  headerRight: { width: 42 },
-  messageList: { paddingHorizontal: 16, paddingBottom: 10, gap: 12 },
+  mascotFrame: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  spritePlaceholder: {
+    width: 64,
+    height: 64,
+    borderWidth: 2,
+    borderColor: retroColors.border,
+    backgroundColor: '#15101d',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  spriteEmoji: { fontSize: 32 },
+  mascotInfo: { gap: 2 },
+  mascotName: { color: retroColors.text, fontSize: 14, fontWeight: '800', fontFamily: 'monospace', letterSpacing: 1.2 },
+  mascotMood: { color: retroColors.muted, fontSize: 10, fontFamily: 'monospace', letterSpacing: 1 },
+
+  // Messages
+  messageList: { paddingHorizontal: 16, paddingVertical: 10, gap: 12 },
   messageRow: { gap: 8 },
   userRow: { alignItems: 'flex-end' },
   assistantRow: { alignItems: 'flex-start' },
-  avatarBadge: { borderWidth: 2, borderColor: retroColors.border, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start' },
-  userAvatar: { backgroundColor: retroColors.panelSoft },
-  assistantAvatar: { backgroundColor: retroColors.panel },
-  avatarText: { color: retroColors.text, fontSize: 10, fontFamily: 'monospace', letterSpacing: 1.2 },
   messageBubbleWrap: { maxWidth: '88%' },
   typingIndicator: { paddingHorizontal: 16, paddingBottom: 8 },
   typingText: { fontSize: 11, color: retroColors.muted, fontFamily: 'monospace', letterSpacing: 1.3 },
+
+  // Input
   inputRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 16, alignItems: 'stretch' },
   inputShell: { flex: 1, minHeight: 52, justifyContent: 'center' },
   input: { color: retroColors.text, fontFamily: 'monospace', fontSize: 14, minHeight: 24, maxHeight: 120, padding: 0, textAlignVertical: 'top' },

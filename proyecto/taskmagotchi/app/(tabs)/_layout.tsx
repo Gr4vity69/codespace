@@ -5,8 +5,9 @@ import { retroColors } from '../../src/components/retroUi'
 function TabIcon({ name, color }: { name: string; color: ColorValue }) {
   const icons: Record<string, string> = {
     home: '⌂',
-    tasks: '≣',
-    pet: '◉',
+    chat: '💬',
+    agenda: '☰',
+    shop: '◈',
     settings: '⚙',
   }
   return <Text style={{ fontSize: 20, color, fontWeight: '700' }}>{icons[name] || '●'}</Text>
@@ -14,7 +15,7 @@ function TabIcon({ name, color }: { name: string; color: ColorValue }) {
 
 export default function TabLayout() {
   return (
-    <Tabs initialRouteName="tasks" screenOptions={{
+    <Tabs initialRouteName="home" screenOptions={{
       headerShown: false,
       tabBarShowLabel: false,
       tabBarActiveTintColor: retroColors.text,
@@ -27,28 +28,35 @@ export default function TabLayout() {
         paddingTop: 8,
         height: 60,
       },
-      tabBarItemStyle: { marginHorizontal: 6, borderWidth: 2, borderColor: 'transparent', backgroundColor: retroColors.background, marginVertical: 2 },
+      tabBarItemStyle: { marginHorizontal: 4, borderWidth: 2, borderColor: 'transparent', backgroundColor: retroColors.background, marginVertical: 2 },
       tabBarActiveBackgroundColor: retroColors.panel,
     }}>
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
-          title: 'Inicio',
+          title: 'Home',
           tabBarIcon: ({ color }) => <TabIcon name="home" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="tasks"
+        name="chat"
         options={{
-          title: 'Tareas',
-          tabBarIcon: ({ color }) => <TabIcon name="tasks" color={color} />,
+          title: 'Chat',
+          tabBarIcon: ({ color }) => <TabIcon name="chat" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="pet"
+        name="agenda"
         options={{
-          title: 'Mascota',
-          tabBarIcon: ({ color }) => <TabIcon name="pet" color={color} />,
+          title: 'Agenda',
+          tabBarIcon: ({ color }) => <TabIcon name="agenda" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="shop"
+        options={{
+          title: 'Tienda',
+          tabBarIcon: ({ color }) => <TabIcon name="shop" color={color} />,
         }}
       />
       <Tabs.Screen
