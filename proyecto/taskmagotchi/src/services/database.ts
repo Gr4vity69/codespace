@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite'
+import { seedDefaultApps } from './settingsDb'
 import type {
   Pet, Task, BlockedApp, Category, Transaction,
   Reward, UserReward, Schedule, ConversationLog, DailyConfig
@@ -153,6 +154,8 @@ async function seedDefaults(): Promise<void> {
     await db.runAsync('INSERT INTO rewards (name, cost, type, durationMinutes) VALUES (?, ?, ?, ?)', '1 hora extra ocio', 35, 'extra_time', 60)
     await db.runAsync('INSERT INTO rewards (name, cost, type, durationMinutes) VALUES (?, ?, ?, ?)', 'Saltar una tarea', 50, 'day_off', null)
   }
+
+  await seedDefaultApps()
 
   const schedCount = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM schedules')
   if (schedCount?.count === 0) {

@@ -1,18 +1,21 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  FlatList, KeyboardAvoidingView, Platform, Image,
+  FlatList, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { sendMessage } from '../../src/services/groqChat'
 import { useTaskStore } from '../../src/store/taskStore'
 import { usePetStore } from '../../src/store/petStore'
-import { getPetMood } from '../../src/utils/petEngine'
+import { getMoodFromTasks } from '../../src/utils/petEngine'
+import { timeStringToTimestamp } from '../../src/utils/timeHelpers'
 import type { ChatMessage, AIPlanResponse } from '../../src/types'
 import { PixelButton, RetroInputShell, RetroScreen, SpeechBubble, retroColors } from '../../src/components/retroUi'
+import PetSprite from '../../src/components/petSprite'
 
 export default function ChatScreen() {
   const addTask = useTaskStore(s => s.addTask)
   const loadTasks = useTaskStore(s => s.loadTasks)
+  const todayTasks = useTaskStore(s => s.todayTasks)
   const pet = usePetStore(s => s.pet)
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -26,8 +29,7 @@ export default function ChatScreen() {
   const [context, setContext] = useState<'planning' | 'motivation' | 'general'>('planning')
   const flatListRef = useRef<FlatList>(null)
 
-  const mood = pet ? getPetMood(pet) : 'neutral'
-  const moodLabel = mood === 'happy' ? 'FELIZ' : mood === 'neutral' ? 'NORMAL' : mood === 'sad' ? 'TRISTE' : 'CANSADA'
+  const skinMood = getMoodFromTasks(todayTasks, pet?.streak ?? 0)
 
   useEffect(() => {
     flatListRef.current?.scrollToEnd({ animated: true })
@@ -68,6 +70,12 @@ export default function ChatScreen() {
                 estimatedMinutes: task.estimatedMinutes || 30,
                 breakAfter: scheduleForTask?.breakAfter ?? 10,
                 materials: task.materials || '',
+                scheduledStart: scheduleForTask?.startTime
+                  ? timeStringToTimestamp(scheduleForTask.startTime)
+                  : null,
+                scheduledEnd: scheduleForTask?.endTime
+                  ? timeStringToTimestamp(scheduleForTask.endTime)
+                  : null,
               })
             }
             await loadTasks()
@@ -100,13 +108,10 @@ export default function ChatScreen() {
         {/* Mascot Container */}
         <View style={styles.mascotBar}>
           <View style={styles.mascotFrame}>
-            {/* Placeholder sprite — will be replaced with animated pixel art */}
-            <View style={styles.spritePlaceholder}>
-              <Text style={styles.spriteEmoji}>🐼</Text>
-            </View>
+            <PetSprite mood={skinMood} size={64} />
             <View style={styles.mascotInfo}>
               <Text style={styles.mascotName}>{pet?.name?.toUpperCase() || 'MAGOTCHI'}</Text>
-              <Text style={styles.mascotMood}>{moodLabel}</Text>
+              <Text style={styles.mascotMood}>{skinMood.toUpperCase()}</Text>
             </View>
           </View>
         </View>
@@ -173,16 +178,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  spritePlaceholder: {
-    width: 64,
-    height: 64,
-    borderWidth: 2,
-    borderColor: retroColors.border,
-    backgroundColor: '#15101d',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  spriteEmoji: { fontSize: 32 },
   mascotInfo: { gap: 2 },
   mascotName: { color: retroColors.text, fontSize: 14, fontWeight: '800', fontFamily: 'monospace', letterSpacing: 1.2 },
   mascotMood: { color: retroColors.muted, fontSize: 10, fontFamily: 'monospace', letterSpacing: 1 },

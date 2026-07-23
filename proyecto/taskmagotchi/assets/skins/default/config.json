@@ -1,0 +1,7 @@
+{
+  "name": "default",
+  "frameWidth": 32,
+  "frameHeight": 32,
+  "frameDuration": 150,
+  "frames": 5
+}

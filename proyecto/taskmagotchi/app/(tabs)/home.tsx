@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList,
   TextInput, Modal, Platform,
 } from 'react-native'
+import { useRouter } from 'expo-router'
 import { useTaskStore } from '../../src/store/taskStore'
 import { usePetStore } from '../../src/store/petStore'
 import { addXp, addCoins, calculateTaskReward } from '../../src/utils/petEngine'
@@ -10,6 +11,7 @@ import { PixelButton, RetroInputShell, RetroPanel, RetroScreen, retroColors } fr
 import type { Task, TaskPriority } from '../../src/types'
 
 export default function HomeScreen() {
+  const router = useRouter()
   const { tasks, todayTasks, addTask, updateTask, deleteTask, loadTasks } = useTaskStore()
   const { pet, updatePet } = usePetStore()
   const [showForm, setShowForm] = useState(false)
@@ -57,6 +59,7 @@ export default function HomeScreen() {
   const pendingTasks = todayTasks.filter(
     t => t.status === 'pending' || t.status === 'in_progress'
   )
+  const isTimeUp = timeRemaining !== null && timeRemaining <= 0
 
   async function handleCreate() {
     if (!title.trim()) return
@@ -110,26 +113,50 @@ export default function HomeScreen() {
             <Text style={styles.brand}>TASKMAGOTCHI</Text>
             <Text style={styles.brandSub}>pixel task companion</Text>
           </View>
+          {pet && (
+            <View style={styles.statsRow}>
+              <Text style={styles.statBadge}>Lv.{pet.level}</Text>
+              <Text style={styles.statBadge}>{pet.coins}🪙</Text>
+            </View>
+          )}
           <PixelButton style={styles.addButton} onPress={() => setShowForm(true)}>+</PixelButton>
         </View>
 
         {/* Timer / Active Task */}
         {selectedTask && selectedTask.status !== 'verified' && (
-          <RetroPanel style={styles.timerPanel}>
+          <RetroPanel style={[
+            styles.timerPanel,
+            isTimeUp && styles.timerPanelTimeUp,
+          ]}>
             <Text style={styles.timerTaskName}>{selectedTask.title}</Text>
-            <Text style={[
-              styles.timerDisplay,
-              { color: timeRemaining !== null && timeRemaining < 300000 ? retroColors.danger : retroColors.text }
-            ]}>
-              {timeRemaining !== null ? formatTime(timeRemaining) : '--:--'}
-            </Text>
-            <Text style={styles.timerLabel}>
-              {selectedTask.estimatedMinutes} min estimados
-              {selectedTask.deadline ? ' · CON DEADLINE' : ''}
-            </Text>
+            {isTimeUp ? (
+              <>
+                <Text style={[styles.timerDisplay, { color: retroColors.danger }]}>
+                  ¡TIEMPO!
+                </Text>
+                <Text style={styles.timeUpSub}>Sube una foto para verificar o completa manual</Text>
+              </>
+            ) : (
+              <>
+                <Text style={[
+                  styles.timerDisplay,
+                  { color: timeRemaining !== null && timeRemaining < 300000 ? retroColors.danger : retroColors.text }
+                ]}>
+                  {timeRemaining !== null ? formatTime(timeRemaining) : '--:--'}
+                </Text>
+                <Text style={styles.timerLabel}>
+                  {selectedTask.estimatedMinutes} min estimados
+                  {selectedTask.deadline ? ' · CON DEADLINE' : ''}
+                </Text>
+              </>
+            )}
             <View style={styles.timerActions}>
-              <PixelButton style={styles.timerBtn} onPress={() => handleQuickComplete(selectedTask.id)}>
-                COMPLETAR
+              <PixelButton
+                style={styles.timerBtn}
+                variant={isTimeUp ? 'danger' : 'solid'}
+                onPress={() => handleQuickComplete(selectedTask.id)}
+              >
+                {isTimeUp ? 'COMPLETAR SIN FOTO' : 'COMPLETAR'}
               </PixelButton>
             </View>
           </RetroPanel>
@@ -180,7 +207,9 @@ export default function HomeScreen() {
           <PixelButton
             style={styles.actionBtn}
             variant="ghost"
-            onPress={() => {}}
+            onPress={() => {
+              if (selectedTask) router.push('/camera/' + selectedTask.id)
+            }}
             disabled={!selectedTask}
           >
             SUBIR FOTO
@@ -243,14 +272,18 @@ const styles = StyleSheet.create({
   brand: { color: retroColors.text, fontSize: 20, fontFamily: 'monospace', fontWeight: '800', letterSpacing: 2 },
   brandSub: { color: retroColors.muted, fontSize: 10, fontFamily: 'monospace', letterSpacing: 1.2, marginTop: 2 },
   addButton: { width: 46, minHeight: 46, paddingHorizontal: 0 },
+  statsRow: { flexDirection: 'row', gap: 6, marginRight: 8 },
+  statBadge: { color: retroColors.text, fontSize: 12, fontFamily: 'monospace', fontWeight: '700', letterSpacing: 0.8 },
 
   // Timer Panel
   timerPanel: { gap: 8, alignItems: 'center', paddingVertical: 16 },
+  timerPanelTimeUp: { borderColor: retroColors.danger },
   timerTaskName: { color: retroColors.text, fontSize: 16, fontWeight: '800', fontFamily: 'monospace', textAlign: 'center' },
   timerDisplay: { fontSize: 48, fontWeight: '800', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', letterSpacing: 4 },
   timerLabel: { fontSize: 11, color: retroColors.muted, fontFamily: 'monospace' },
   timerActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
   timerBtn: { minHeight: 38, paddingHorizontal: 16 },
+  timeUpSub: { fontSize: 12, color: retroColors.danger, fontFamily: 'monospace', textAlign: 'center' },
 
   // Slider
   sliderSection: { gap: 8 },

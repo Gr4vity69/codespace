@@ -1,21 +1,19 @@
 export interface Pet {
   id: number
   name: string
+  /** Skin name — maps to assets/skins/<species>/ */
   species: string
-  happiness: number
-  hunger: number
-  energy: number
   level: number
   xp: number
   xpToNextLevel: number
-  lastFed: number
-  lastPlayed: number
   coins: number
   totalEarned: number
   totalSpent: number
   streak: number
   lastStreakDate: string
 }
+
+export type PetMood = 'normal' | 'happy' | 'sad' | 'angry'
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'verified'
 export type TaskPriority = 'low' | 'medium' | 'high'

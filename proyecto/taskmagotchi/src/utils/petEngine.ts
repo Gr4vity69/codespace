@@ -1,4 +1,4 @@
-import type { Pet, Task } from '../types'
+import type { Pet, Task, PetMood } from '../types'
 
 const XP_PER_TASK = 20
 const XP_PER_VERIFIED_TASK = 30
@@ -6,11 +6,6 @@ const XP_STREAK_BONUS = 10
 const COINS_PER_TASK = 10
 const COINS_PER_VERIFIED = 15
 const PENALTY_UNFINISHED = -15
-const PENALTY_IGNORE = -5
-
-const MAX_STAT = 100
-const MIN_STAT = 0
-const DECAY_RATE = 2
 
 export function calculateXpForLevel(level: number): number {
   return level * 100
@@ -67,52 +62,47 @@ export function calculatePenalty(taskStatus: string): { xp: number; coins: numbe
   return { xp: 0, coins: 0 }
 }
 
-export function applyDecay(pet: Pet, hoursSinceLastUpdate: number): Pet {
-  const decayAmount = Math.round(hoursSinceLastUpdate * DECAY_RATE)
+// ═══════════════════════════════════════════════════════════════
+//  Mood engine — based ONLY on task performance
+// ═══════════════════════════════════════════════════════════════
 
-  return {
-    ...pet,
-    happiness: Math.max(MIN_STAT, pet.happiness - decayAmount),
-    hunger: Math.max(MIN_STAT, pet.hunger - decayAmount),
-    energy: Math.max(MIN_STAT, pet.energy - decayAmount),
-  }
+/**
+ * Determine pet mood based on task data:
+ *  - happy:  streak ≥ 3 AND at least 2 tasks completed today
+ *  - angry:  overdue tasks (past estimated time or deadline)
+ *  - sad:    no tasks completed today AND many pending
+ *  - normal: everything else
+ */
+export function getMoodFromTasks(
+  todayTasks: Task[],
+  streak: number,
+): PetMood {
+  const now = Date.now()
+  const pending = todayTasks.filter(t => t.status === 'pending' || t.status === 'in_progress')
+  const completedToday = todayTasks.filter(t => t.status === 'verified').length
+
+  // Happy: on a roll
+  if (streak >= 3 && completedToday >= 2) return 'happy'
+
+  // Angry: overdue tasks
+  const overdue = pending.filter(t => {
+    const deadline = t.deadline ?? (t.createdAt + t.estimatedMinutes * 60000)
+    return deadline < now
+  })
+  if (overdue.length >= 2) return 'angry'
+  if (overdue.length >= 1 && completedToday === 0) return 'angry'
+
+  // Sad: abandoned
+  if (completedToday === 0 && pending.length >= 3) return 'sad'
+
+  return 'normal'
 }
 
-export function feedPet(pet: Pet): Pet {
-  return {
-    ...pet,
-    hunger: Math.min(MAX_STAT, pet.hunger + 30),
-    happiness: Math.min(MAX_STAT, pet.happiness + 5),
-    lastFed: Date.now(),
-  }
-}
+// ═══════════════════════════════════════════════════════════════
+//  Motivational messages — updated for new mood system
+// ═══════════════════════════════════════════════════════════════
 
-export function playWithPet(pet: Pet): Pet {
-  return {
-    ...pet,
-    happiness: Math.min(MAX_STAT, pet.happiness + 25),
-    energy: Math.max(MIN_STAT, pet.energy - 10),
-    lastPlayed: Date.now(),
-  }
-}
-
-export function restPet(pet: Pet): Pet {
-  return {
-    ...pet,
-    energy: Math.min(MAX_STAT, pet.energy + 35),
-    happiness: Math.min(MAX_STAT, pet.happiness + 10),
-  }
-}
-
-export function getPetMood(pet: Pet): 'happy' | 'neutral' | 'sad' | 'sick' {
-  const avg = (pet.happiness + pet.hunger + pet.energy) / 3
-  if (avg >= 70) return 'happy'
-  if (avg >= 40) return 'neutral'
-  if (avg >= 20) return 'sad'
-  return 'sick'
-}
-
-export function generateMotivationalMessage(mood: string, pendingTasks: number): string {
+export function generateMotivationalMessage(mood: PetMood, pendingTasks: number): string {
   if (pendingTasks === 0) {
     const messages = [
       '¡No tienes tareas pendientes! ¿Qué te gustaría hacer hoy?',
@@ -124,14 +114,12 @@ export function generateMotivationalMessage(mood: string, pendingTasks: number):
 
   switch (mood) {
     case 'happy':
-      return '¡Estoy de muy buen humor! Vamos a terminar esas tareas juntos 💪'
-    case 'neutral':
-      return 'Bueno... tengo hambre pero podemos trabajar. ¿Empezamos?'
+      return '¡Vamos excelente! Sigamos con esta racha imparable 🎉'
+    case 'normal':
+      return 'Vamos a terminar esas tareas juntos. ¿Empezamos con la primera? 💪'
     case 'sad':
-      return 'Estoy un poco triste... Me animaría si hacemos algunas tareas juntos'
-    case 'sick':
-      return '*tos* *tos*... Llevo sin cuidados mucho tiempo. ¿Me das atención?'
-    default:
-      return '¿En qué te ayudo hoy?'
+      return 'Ánimo, podemos con esto. Empieza con la tarea más fácil y vamos de ahí 💙'
+    case 'angry':
+      return 'Se nos acumularon varias... mejor empezamos ya y vamos una por una ⏰'
   }
 }
