@@ -33,7 +33,10 @@ const MOOD_VISUALS: Record<string, MoodVisual> = {
 }
 
 // ─── Sprite config ──────────────────────────────────────────────
-const SPRITE_SIZE = 32
+const FRAME_W = 32
+const FRAME_H = 32
+const FRAME_COUNT = 5
+const FRAME_MS = 150
 const FADE_DURATION = 200
 
 // ─── Props ──────────────────────────────────────────────────────
@@ -52,15 +55,18 @@ export default function PetSprite({
   size = 64,
 }: PetSpriteProps) {
   const spriteSource = SKIN_SPRITES[skin]?.[mood]
+  const [frame, setFrame] = useState(0)
   const fadeAnim = useRef(new Animated.Value(1)).current
   const prevMood = useRef(mood)
   const visual = MOOD_VISUALS[mood] ?? MOOD_VISUALS.normal
+  const scale = size / FRAME_H
 
   // Fade transition when mood changes
   useEffect(() => {
     if (prevMood.current === mood) return
     prevMood.current = mood
 
+    setFrame(0)
     fadeAnim.setValue(0.3)
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -69,13 +75,30 @@ export default function PetSprite({
     }).start()
   }, [mood, fadeAnim])
 
+  // Cycle frames for spritesheet animation
+  useEffect(() => {
+    if (!spriteSource) return
+    const id = setInterval(() => {
+      setFrame(prev => (prev + 1) % FRAME_COUNT)
+    }, FRAME_MS)
+    return () => clearInterval(id)
+  }, [spriteSource])
+
+  // Reset frame on mood change
+  useEffect(() => { setFrame(0) }, [mood])
+
   // ── Render ──
   const content = spriteSource ? (
-    <Image
-      source={spriteSource}
-      style={{ width: size, height: size }}
-      resizeMode="contain"
-    />
+    <View style={[styles.clip, { width: size, height: size }]}>
+      <Image
+        source={spriteSource}
+        style={{
+          width: FRAME_W * FRAME_COUNT * scale,
+          height: size,
+          transform: [{ translateX: -frame * FRAME_W * scale }],
+        }}
+      />
+    </View>
   ) : (
     <View style={[styles.placeholderBox, { backgroundColor: visual.bg, borderColor: visual.accent }]}>
       <Text style={[styles.emoji, { fontSize: size * 0.45 }]}>{visual.emoji}</Text>
@@ -103,10 +126,10 @@ interface AnimatedSpriteProps {
 
 export function AnimatedSprite({
   source,
-  frameWidth = SPRITE_SIZE,
-  frameHeight = SPRITE_SIZE,
-  frameCount = 1,
-  frameMs = 150,
+  frameWidth = FRAME_W,
+  frameHeight = FRAME_H,
+  frameCount = FRAME_COUNT,
+  frameMs = FRAME_MS,
   size = 64,
 }: AnimatedSpriteProps) {
   const [frame, setFrame] = useState(0)
@@ -119,14 +142,6 @@ export function AnimatedSprite({
     }, frameMs)
     return () => clearInterval(id)
   }, [frameCount, frameMs])
-
-  if (frameCount <= 1) {
-    return (
-      <View style={[styles.wrapper, { width: size, height: size }]}>
-        <Image source={source} style={{ width: size, height: size }} resizeMode="contain" />
-      </View>
-    )
-  }
 
   return (
     <View style={[styles.wrapper, { width: size, height: size }]}>
