@@ -6,13 +6,13 @@ import {
 import { useRouter } from 'expo-router'
 import { useTaskStore } from '../../src/store/taskStore'
 import { usePetStore } from '../../src/store/petStore'
-import { addXp, addCoins, calculateTaskReward } from '../../src/utils/petEngine'
+import { calculateTaskReward } from '../../src/utils/petEngine'
 import { PixelButton, RetroInputShell, RetroPanel, RetroScreen, retroColors } from '../../src/components/retroUi'
 import type { Task, TaskPriority } from '../../src/types'
 
 export default function HomeScreen() {
   const router = useRouter()
-  const { tasks, todayTasks, addTask, updateTask, deleteTask, loadTasks } = useTaskStore()
+  const { todayTasks, addTask, updateTask, loadTasks } = useTaskStore()
   const { pet, updatePet } = usePetStore()
   const [showForm, setShowForm] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -83,19 +83,6 @@ export default function HomeScreen() {
     setShowForm(false)
   }
 
-  async function handleQuickComplete(taskId: number) {
-    if (pet) {
-      const task = tasks.find(t => t.id === taskId)
-      if (task) {
-        const reward = calculateTaskReward(task, false, false)
-        const updatedPet = addCoins(addXp(pet, reward.xp), reward.coins)
-        await updatePet(updatedPet)
-      }
-    }
-    await updateTask(taskId, { status: 'verified', completedAt: Date.now() })
-    if (selectedTask?.id === taskId) setSelectedTask(null)
-  }
-
   function formatTime(ms: number): string {
     if (ms <= 0) return '00:00'
     const totalSec = Math.floor(ms / 1000)
@@ -153,10 +140,10 @@ export default function HomeScreen() {
             <View style={styles.timerActions}>
               <PixelButton
                 style={styles.timerBtn}
-                variant={isTimeUp ? 'danger' : 'solid'}
-                onPress={() => handleQuickComplete(selectedTask.id)}
+                variant="solid"
+                onPress={() => router.push('/camera/' + selectedTask.id)}
               >
-                {isTimeUp ? 'COMPLETAR SIN FOTO' : 'COMPLETAR'}
+                TOMAR FOTO
               </PixelButton>
             </View>
           </RetroPanel>

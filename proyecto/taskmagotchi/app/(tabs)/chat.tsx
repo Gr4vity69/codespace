@@ -3,12 +3,13 @@ import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   FlatList, KeyboardAvoidingView, Platform,
 } from 'react-native'
-import { sendMessage } from '../../src/services/groqChat'
+import { sendMessageWithMemory } from '../../src/services/groqChat'
 import { useTaskStore } from '../../src/store/taskStore'
 import { usePetStore } from '../../src/store/petStore'
 import { getMoodFromTasks } from '../../src/utils/petEngine'
-import { timeStringToTimestamp } from '../../src/utils/timeHelpers'
+import { timeStringToTimestamp, formatTimestampToTime } from '../../src/utils/timeHelpers'
 import { getApps, upsertApp } from '../../src/services/settingsDb'
+import { loadRecentConversations, saveConversation, formatConversationSummary } from '../../src/services/conversationMemory'
 import type { ChatMessage, AIPlanResponse, AIBlockResponse } from '../../src/types'
 import { PixelButton, RetroInputShell, RetroScreen, SpeechBubble, retroColors } from '../../src/components/retroUi'
 import PetSprite from '../../src/components/petSprite'
@@ -27,6 +28,7 @@ export default function ChatScreen() {
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [processingLabel, setProcessingLabel] = useState<string | null>(null)
   const [context, setContext] = useState<'planning' | 'motivation' | 'general'>('planning')
   const flatListRef = useRef<FlatList>(null)
 
@@ -35,6 +37,23 @@ export default function ChatScreen() {
   useEffect(() => {
     flatListRef.current?.scrollToEnd({ animated: true })
   }, [messages])
+
+  useEffect(() => {
+    ;(async () => {
+      const history = await loadRecentConversations(6)
+      if (history.length > 0) {
+        const pastMessages: ChatMessage[] = []
+        for (const entry of history) {
+          pastMessages.push({ role: 'user', content: entry.userMessage })
+          const clean = entry.aiResponse.replace(/\{[\s\S]*\}/, '').trim()
+          if (clean) pastMessages.push({ role: 'assistant', content: clean })
+        }
+        if (pastMessages.length > 0) {
+          setMessages(prev => [...prev, ...pastMessages])
+        }
+      }
+    })()
+  }, [])
 
   async function handleBlockResponse(cmd: AIBlockResponse) {
     if (cmd.action === 'list_blocked') {
@@ -76,6 +95,10 @@ export default function ChatScreen() {
     }
   }
 
+  function stripJson(text: string): string {
+    return text.replace(/\{[\s\S]*\}/, '').trim()
+  }
+
   async function handleSend() {
     if (!input.trim() || loading) return
 
@@ -86,19 +109,51 @@ export default function ChatScreen() {
     setLoading(true)
 
     try {
-      const response = await sendMessage(
+      const conversationSummary = formatConversationSummary(await loadRecentConversations(12))
+
+      const pendingList = todayTasks
+        .filter(t => t.status === 'pending' || t.status === 'in_progress')
+        .map(t => `  - ${t.title} (${t.estimatedMinutes} min, ${t.priority})`)
+
+      const scheduleList = todayTasks
+        .filter(t => t.scheduledStart != null)
+        .sort((a, b) => (a.scheduledStart ?? 0) - (b.scheduledStart ?? 0))
+        .map(t => {
+          const start = t.scheduledStart ? formatTimestampToTime(t.scheduledStart) : '?'
+          const end = t.scheduledEnd ? formatTimestampToTime(t.scheduledEnd) : '?'
+          return `  ${start}-${end}: ${t.title}`
+        })
+
+      const response = await sendMessageWithMemory(
         newMessages.map(m => ({ role: m.role, content: m.content })),
-        context
+        context,
+        {
+          conversationSummary,
+          pendingTasks: pendingList.length > 0 ? pendingList.join('\n') : 'Sin tareas pendientes',
+          todaySchedule: scheduleList.length > 0 ? scheduleList.join('\n') : 'Sin horario definido',
+          currentMood: skinMood,
+          petLevel: pet ? `Lv.${pet.level} (${pet.xp}/${pet.xpToNextLevel} XP)` : undefined,
+        }
       )
 
-      const aiMsg: ChatMessage = { role: 'assistant', content: response }
-      setMessages(prev => [...prev, aiMsg])
-
       const jsonMatch = response.match(/\{[\s\S]*\}/)
+      const conversationalText = jsonMatch ? stripJson(response) : response
+
       if (jsonMatch) {
+        let handled = false
+        let aiDisplayContent = ''
+
+        // Try task-plan JSON
         try {
           const plan: AIPlanResponse = JSON.parse(jsonMatch[0])
           if (plan.ready && plan.tasks) {
+            handled = true
+            if (conversationalText) {
+              aiDisplayContent = conversationalText
+              setMessages(prev => [...prev, { role: 'assistant', content: conversationalText }])
+            }
+            setProcessingLabel('📋 Estableciendo tareas...')
+
             for (const task of plan.tasks) {
               const scheduleForTask = plan.schedule?.find(
                 s => s.taskTitle.toLowerCase() === task.title.toLowerCase()
@@ -119,34 +174,54 @@ export default function ChatScreen() {
                   : null,
               })
             }
+
             await loadTasks()
+            setProcessingLabel(null)
             const taskCount = plan.tasks.length
-            const summary: ChatMessage = {
-              role: 'assistant',
-              content: `✅ ¡Listo! He creado ${taskCount} tarea${taskCount > 1 ? 's' : ''} para ti. Revisa el Home para verlas.`,
-            }
-            setMessages(prev => [...prev, summary])
+            const summaryMsg = `✅ Tareas establecidas (${taskCount}). Revisa el Home para verlas.`
+            aiDisplayContent = summaryMsg
+            setMessages(prev => [...prev, { role: 'assistant', content: summaryMsg }])
             setContext('general')
           }
-        } catch {
-          // Not a task-plan JSON
+        } catch {}
+
+        // Try blocking JSON
+        if (!handled) {
+          try {
+            const blockCmd: AIBlockResponse = JSON.parse(jsonMatch[0])
+            if (blockCmd.action && ['block_app', 'unblock_app', 'list_blocked', 'block_suggestion'].includes(blockCmd.action)) {
+              handled = true
+              if (conversationalText) {
+                aiDisplayContent = conversationalText
+                setMessages(prev => [...prev, { role: 'assistant', content: conversationalText }])
+              }
+              setProcessingLabel(blockCmd.action === 'block_app' ? '🔒 Bloqueando app...' : '🔓 Desbloqueando...')
+              await handleBlockResponse(blockCmd)
+              setProcessingLabel(null)
+            }
+          } catch {}
         }
 
-        try {
-          const blockCmd: AIBlockResponse = JSON.parse(jsonMatch[0])
-          if (blockCmd.action && ['block_app', 'unblock_app', 'list_blocked', 'block_suggestion'].includes(blockCmd.action)) {
-            await handleBlockResponse(blockCmd)
-          }
-        } catch {
-          // Not a blocking JSON either
+        // Unknown JSON — show raw conversational text only
+        if (!handled && conversationalText) {
+          aiDisplayContent = conversationalText
+          setMessages(prev => [...prev, { role: 'assistant', content: conversationalText }])
         }
+
+        if (aiDisplayContent) {
+          await saveConversation(input.trim(), aiDisplayContent, context)
+        }
+      } else {
+        // No JSON — normal conversational response
+        setMessages(prev => [...prev, { role: 'assistant', content: response }])
+        await saveConversation(input.trim(), response, context)
       }
     } catch (error) {
-      const errMsg: ChatMessage = {
+      setProcessingLabel(null)
+      setMessages(prev => [...prev, {
         role: 'assistant',
         content: 'Lo siento, tuve un problema al procesar tu mensaje. ¿Podemos intentarlo de nuevo?',
-      }
-      setMessages(prev => [...prev, errMsg])
+      }])
     } finally {
       setLoading(false)
     }
@@ -183,9 +258,11 @@ export default function ChatScreen() {
           )}
         />
 
-        {loading && (
+        {(loading || processingLabel) && (
           <View style={styles.typingIndicator}>
-            <Text style={styles.typingText}>MAGOTCHI TYPING...</Text>
+            <Text style={styles.typingText}>
+              {processingLabel || 'MAGOTCHI TYPING...'}
+            </Text>
           </View>
         )}
 

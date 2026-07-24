@@ -121,3 +121,56 @@ export async function sendMessage(
 
   return callGroq(groqMessages)
 }
+
+interface MemoryContext {
+  conversationSummary?: string
+  pendingTasks?: string
+  todaySchedule?: string
+  currentMood?: string
+  petLevel?: string
+}
+
+export async function sendMessageWithMemory(
+  messages: { role: 'user' | 'assistant' | 'system'; content: string }[],
+  context: string = 'general',
+  memory: MemoryContext = {},
+): Promise<string> {
+  let systemPrompt = buildSystemPrompt(context)
+
+  const contextParts: string[] = []
+
+  if (memory.conversationSummary) {
+    contextParts.push(memory.conversationSummary)
+  }
+
+  if (memory.todaySchedule) {
+    contextParts.push(`\nCalendario de hoy:\n${memory.todaySchedule}`)
+  }
+
+  if (memory.pendingTasks) {
+    contextParts.push(`\nTareas pendientes:\n${memory.pendingTasks}`)
+  }
+
+  if (memory.currentMood) {
+    contextParts.push(`\nEstado de ánimo actual: ${memory.currentMood}`)
+  }
+
+  if (memory.petLevel) {
+    contextParts.push(`\nNivel de Magotchi: ${memory.petLevel}`)
+  }
+
+  if (contextParts.length > 0) {
+    systemPrompt += '\n\nINFORMACIÓN CONTEXTUAL ACTUAL:\n' + contextParts.join('\n')
+    systemPrompt += '\n\nUsa esta información para responder de forma coherente con lo que ya se ha hecho hoy. No repitas información que ya está aquí a menos que te pregunten.'
+  }
+
+  const groqMessages: GroqMessage[] = [
+    { role: 'system', content: systemPrompt },
+    ...messages.filter(m => m.role !== 'system').map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    })),
+  ]
+
+  return callGroq(groqMessages)
+}
