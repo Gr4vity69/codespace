@@ -204,8 +204,16 @@ export function isInBreakTime(schedules: { breakStart: string; breakEnd: string 
     const startMinutes = startH * 60 + startM
     const endMinutes = endH * 60 + endM
 
-    if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
-      return true
+    if (endMinutes <= startMinutes) {
+      // Horario overnight (ej: 22:00-06:00) — cruza la medianoche
+      if (currentMinutes >= startMinutes || currentMinutes < endMinutes) {
+        return true
+      }
+    } else {
+      // Horario normal en el mismo día
+      if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+        return true
+      }
     }
   }
 
