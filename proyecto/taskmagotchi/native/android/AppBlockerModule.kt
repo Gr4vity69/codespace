@@ -1,15 +1,12 @@
 package com.taskmagotchi.app
 
 import android.app.ActivityManager
-import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import com.facebook.react.bridge.*
-import com.facebook.react.modules.core.DeviceEventManagerModule
 
 class AppBlockerModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
@@ -174,9 +171,10 @@ class AppBlockerModule(reactContext: ReactApplicationContext) :
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) return true
     val usm = reactApplicationContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
     val currentTime = System.currentTimeMillis()
+    // Query 24 hours to avoid false negatives when the user hasn't used the phone recently
     val stats = usm.queryUsageStats(
       UsageStatsManager.INTERVAL_DAILY,
-      currentTime - 1000 * 60 * 60,
+      currentTime - 24 * 60 * 60 * 1000L,
       currentTime
     )
     return !stats.isNullOrEmpty()

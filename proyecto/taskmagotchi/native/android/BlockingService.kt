@@ -26,7 +26,13 @@ class BlockingService : Service() {
       private set
   }
 
-  private val handler = Handler(Looper.getMainLooper())
+  // Handler.createAsync available since API 28 — avoids deprecation + async-safe
+  private val handler = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+    Handler.createAsync(Looper.getMainLooper())
+  } else {
+    @Suppress("DEPRECATION")
+    Handler(Looper.getMainLooper())
+  }
   private val checkRunnable = object : Runnable {
     override fun run() {
       val foregroundPkg = getForegroundPackage()
@@ -75,7 +81,7 @@ class BlockingService : Service() {
           val currentTime = System.currentTimeMillis()
           val stats = usm.queryUsageStats(
             android.app.usage.UsageStatsManager.INTERVAL_DAILY,
-            currentTime - 60 * 1000,
+            currentTime - 5 * 60 * 1000L,
             currentTime
           )
           if (stats != null) {

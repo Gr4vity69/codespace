@@ -25,7 +25,8 @@ const PERMISSIONS = [
   'android.permission.SYSTEM_ALERT_WINDOW',
   'android.permission.FOREGROUND_SERVICE',
   'android.permission.FOREGROUND_SERVICE_SPECIAL_USE',
-  'android.permission.REQUEST_INSTALL_PACKAGES',
+  // Required for foreground service notification on Android 13+ (API 33+)
+  'android.permission.POST_NOTIFICATIONS',
 ]
 
 // ── Plugin ───────────────────────────────────────────────────────

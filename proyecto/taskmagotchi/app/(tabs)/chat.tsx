@@ -45,7 +45,7 @@ export default function ChatScreen() {
         const pastMessages: ChatMessage[] = []
         for (const entry of history) {
           pastMessages.push({ role: 'user', content: entry.userMessage })
-          const clean = entry.aiResponse.replace(/\{[\s\S]*\}/, '').trim()
+          const clean = entry.aiResponse.replace(/\{[\s\S]*?\}/, '').trim()
           if (clean) pastMessages.push({ role: 'assistant', content: clean })
         }
         if (pastMessages.length > 0) {
