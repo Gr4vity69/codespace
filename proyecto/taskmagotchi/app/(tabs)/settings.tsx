@@ -10,6 +10,7 @@ import {
   getApps, upsertApp, deleteApp, toggleApp,
   getSchedules, updateSchedule, toggleSchedule, DAY_NAMES,
 } from '../../src/services/settingsDb'
+import { setTemporaryUnlock, getTemporaryUnlockRemaining } from '../../src/services/blocking'
 import PetSprite, { AVAILABLE_SKINS } from '../../src/components/petSprite'
 import type { MathChallenge, BlockedApp, Schedule, PetMood } from '../../src/types'
 import {
@@ -100,10 +101,13 @@ export default function SettingsScreen() {
   }
 
   // ── Blocker handlers ──
-  function handleRequestUnlock() {
-    if (unlockedUntil && Date.now() < unlockedUntil) {
-      const remaining = Math.round((unlockedUntil - Date.now()) / 60000)
-      Alert.alert('Ya está desbloqueado', `Por ${remaining} minutos más`)
+  async function handleRequestUnlock() {
+    // Check if still unlocked (native + local state)
+    const nativeRemaining = await getTemporaryUnlockRemaining()
+    const localRemaining = unlockedUntil ? (unlockedUntil - Date.now()) / 1000 : 0
+    const remainingSec = Math.max(nativeRemaining, localRemaining)
+    if (remainingSec > 0) {
+      Alert.alert('Ya está desbloqueado', `Por ${Math.round(remainingSec / 60)} minutos más`)
       return
     }
     const c = generateMathChallenge('medium')
@@ -112,15 +116,22 @@ export default function SettingsScreen() {
     setShowBlocker(true)
   }
 
-  function handleSubmitAnswer() {
+  async function handleSubmitAnswer() {
     if (!challenge) return
-    const numAnswer = parseInt(answer)
+    const trimmed = answer.trim()
+    if (!trimmed || isNaN(Number(trimmed))) {
+      Alert.alert('❌ Inválido', 'Ingresa un número válido')
+      return
+    }
+    const numAnswer = parseInt(trimmed)
     if (checkMathAnswer(challenge, numAnswer)) {
-      const until = Date.now() + 15 * 60 * 1000
+      const DURATION_MINUTES = 15
+      const until = Date.now() + DURATION_MINUTES * 60 * 1000
       setUnlockedUntil(until)
+      await setTemporaryUnlock(DURATION_MINUTES) // ← sincroniza con módulo nativo
       setShowBlocker(false)
       setChallenge(null)
-      Alert.alert('✅ Desbloqueado', 'Tienes 15 minutos de acceso libre')
+      Alert.alert('✅ Desbloqueado', `Tienes ${DURATION_MINUTES} minutos de acceso libre`)
     } else {
       Alert.alert('❌ Incorrecto', 'Respuesta equivocada. Intenta de nuevo en un momento.')
       setAnswer('')

@@ -20,10 +20,13 @@ class BlockingService : Service() {
     const val CHECK_INTERVAL_MS = 2000L
     const val FOREGROUND_PACKAGE_KEY = "com.taskmagotchi.app.FOREGROUND_PACKAGE"
     const val CURRENT_BLOCKED_KEY = "com.taskmagotchi.app.CURRENT_BLOCKED"
+    const val PREFS_NAME = "app_blocker_prefs"
+    const val PREFS_UNLOCK_UNTIL = "unlock_until"
     var currentForegroundPackage: String? = null
       private set
     var isCurrentlyBlocked: Boolean = false
       private set
+    var unlockUntil: Long = 0
   }
 
   // Handler.createAsync available since API 28 — avoids deprecation + async-safe
@@ -37,12 +40,22 @@ class BlockingService : Service() {
     override fun run() {
       val foregroundPkg = getForegroundPackage()
       currentForegroundPackage = foregroundPkg
+
+      // Check if temporarily unlocked (math challenge)
+      val isUnlocked = unlockUntil > System.currentTimeMillis()
+      if (isUnlocked) {
+        isCurrentlyBlocked = false
+      }
+
       handler.postDelayed(this, CHECK_INTERVAL_MS)
     }
   }
 
   override fun onCreate() {
     super.onCreate()
+    // Restore unlock state from SharedPreferences
+    val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    unlockUntil = prefs.getLong(PREFS_UNLOCK_UNTIL, 0)
     createNotificationChannel()
   }
 

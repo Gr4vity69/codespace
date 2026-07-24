@@ -17,6 +17,7 @@ class AppBlockerModule(reactContext: ReactApplicationContext) :
     const val SERVICE_ACTION_STOP = "com.taskmagotchi.app.action.STOP_BLOCKING"
     const val PREFS_NAME = "app_blocker_prefs"
     const val PREFS_SERVICE_RUNNING = "service_running"
+    const val PREFS_UNLOCK_UNTIL = "unlock_until"
   }
 
   override fun getName(): String = NAME
@@ -172,6 +173,29 @@ class AppBlockerModule(reactContext: ReactApplicationContext) :
       promise.resolve(true)
     } catch (e: Exception) {
       promise.reject("INTENT_ERROR", e.message)
+    }
+  }
+
+  @ReactMethod
+  fun setUnlockUntil(durationMinutes: Int, promise: Promise) {
+    try {
+      val unlockTime = System.currentTimeMillis() + durationMinutes.toLong() * 60 * 1000
+      getPrefs().edit().putLong(PREFS_UNLOCK_UNTIL, unlockTime).apply()
+      BlockingService.unlockUntil = unlockTime
+      promise.resolve(true)
+    } catch (e: Exception) {
+      promise.reject("PREF_ERROR", e.message)
+    }
+  }
+
+  @ReactMethod
+  fun getUnlockRemaining(promise: Promise) {
+    try {
+      val unlockTime = getPrefs().getLong(PREFS_UNLOCK_UNTIL, 0)
+      val remaining = unlockTime - System.currentTimeMillis()
+      promise.resolve(if (remaining > 0) remaining.toDouble() / 1000.0 else 0.0)
+    } catch (e: Exception) {
+      promise.resolve(0.0)
     }
   }
 

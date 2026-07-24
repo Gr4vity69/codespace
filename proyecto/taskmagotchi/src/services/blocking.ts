@@ -16,6 +16,8 @@ interface BlockerNativeModule {
   requestAccessibilityPermission(): Promise<void>
   requestUsageStatsPermission(): Promise<void>
   hasUsageStatsPermission(): Promise<boolean>
+  setUnlockUntil(durationMinutes: number): Promise<boolean>
+  getUnlockRemaining(): Promise<number>
 }
 
 let nativeModule: BlockerNativeModule | null = null
@@ -145,6 +147,33 @@ export async function hideBlockingOverlay(): Promise<void> {
 
 export function isBlockedApp(appPackageName: string, blockedApps: BlockedApp[]): boolean {
   return blockedApps.some(app => app.packageName === appPackageName && app.isBlocked)
+}
+
+/**
+ * Temporarily unlock apps for N minutes (math challenge reward).
+ * The blocking service will skip enforcement during this window.
+ */
+export async function setTemporaryUnlock(durationMinutes: number): Promise<boolean> {
+  if (Platform.OS !== 'android') return false
+  const module = getNativeModule()
+  if (!module) return false
+  try {
+    await module.setUnlockUntil(durationMinutes)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function getTemporaryUnlockRemaining(): Promise<number> {
+  if (Platform.OS !== 'android') return 0
+  const module = getNativeModule()
+  if (!module) return 0
+  try {
+    return await module.getUnlockRemaining()
+  } catch {
+    return 0
+  }
 }
 
 export async function requestAccessibilityService(): Promise<boolean> {

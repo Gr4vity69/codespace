@@ -22,6 +22,7 @@ export {
   showBlockingOverlay, hideBlockingOverlay,
   requestOverlayPermission, requestUsageStatsPermission, checkUsageStatsPermission,
   requestAccessibilityService,
+  setTemporaryUnlock, getTemporaryUnlockRemaining,
   isBlockedApp, isInBreakTime,
 } from './services/blocking'
 export { getApps, upsertApp } from './services/settingsDb'
