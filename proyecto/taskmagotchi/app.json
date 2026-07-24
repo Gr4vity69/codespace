@@ -29,7 +29,8 @@
       "expo-router",
       "expo-sqlite",
       "expo-status-bar",
-      "expo-camera"
+      "expo-camera",
+      "./plugins/withAppBlocker"
     ],
     "extra": {
       "router": {},

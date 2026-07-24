@@ -16,6 +16,17 @@ interface GroqResponse {
   }[]
 }
 
+const BLOCKING_CAPABILITIES = `TAMBIÉN puedes ayudar al usuario a gestionar el bloqueo de aplicaciones.
+- Si el usuario te pide bloquear una app, responde con un JSON:
+  { "action": "block_app", "appName": "YouTube", "packageName": "com.google.android.youtube", "reason": "aumentar concentración" }
+- Si pide desbloquear:
+  { "action": "unblock_app", "appName": "Chrome", "packageName": "com.android.chrome" }
+- Si pregunta qué apps puede bloquear o qué apps hay bloqueadas:
+  { "action": "list_blocked" }
+- Si sugieres bloquear una app que distrae:
+  { "action": "block_suggestion", "appName": "Instagram", "packageName": "com.instagram.android", "reason": "te distrae de tus tareas" }
+SIEMPRE responde en español, conversacional. Primero explica tu sugerencia, luego incluye el JSON si aplica.`
+
 const SYSTEM_PROMPTS: Record<string, string> = {
   planning: `Eres Magotchi, una mascota virtual motivacional. Tu personalidad es amigable, entusiasta y un poco bromista.
     
@@ -32,7 +43,9 @@ const SYSTEM_PROMPTS: Record<string, string> = {
       "schedule": [{ "startTime": "09:00", "endTime": "10:00", "taskTitle": "...", "breakAfter": 15 }]
     }
     
-    Si aún no tienes suficiente información, responde de forma conversacional sin incluir el JSON.`,
+    Si aún no tienes suficiente información, responde de forma conversacional sin incluir el JSON.
+    
+    ${BLOCKING_CAPABILITIES}`,
   motivation: `Eres Magotchi, una mascota virtual motivacional y entusiasta.
     
     El usuario no tiene tareas hoy. Tu trabajo es:
@@ -47,8 +60,12 @@ const SYSTEM_PROMPTS: Record<string, string> = {
       "suggestion": "nombre de la actividad",
       "description": "descripción de lo que hará",
       "duration": 30
-    }`,
-  general: `Eres Magotchi, una mascota virtual. Responde en español de forma amigable y conversacional.`,
+    }
+    
+    ${BLOCKING_CAPABILITIES}`,
+  general: `Eres Magotchi, una mascota virtual. Responde en español de forma amigable y conversacional.
+  
+  ${BLOCKING_CAPABILITIES}`,
 }
 
 export function buildSystemPrompt(context: string): string {

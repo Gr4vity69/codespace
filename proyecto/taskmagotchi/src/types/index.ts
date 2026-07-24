@@ -111,6 +111,13 @@ export interface ChatMessage {
   content: string
 }
 
+export interface AIBlockResponse {
+  action: 'block_app' | 'unblock_app' | 'list_blocked' | 'block_suggestion'
+  appName?: string
+  packageName?: string
+  reason?: string
+}
+
 export interface AIPlanResponse {
   ready?: boolean
   suggestion?: string

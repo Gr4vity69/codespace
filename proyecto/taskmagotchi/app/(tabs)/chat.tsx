@@ -8,7 +8,8 @@ import { useTaskStore } from '../../src/store/taskStore'
 import { usePetStore } from '../../src/store/petStore'
 import { getMoodFromTasks } from '../../src/utils/petEngine'
 import { timeStringToTimestamp } from '../../src/utils/timeHelpers'
-import type { ChatMessage, AIPlanResponse } from '../../src/types'
+import { getApps, upsertApp } from '../../src/services/settingsDb'
+import type { ChatMessage, AIPlanResponse, AIBlockResponse } from '../../src/types'
 import { PixelButton, RetroInputShell, RetroScreen, SpeechBubble, retroColors } from '../../src/components/retroUi'
 import PetSprite from '../../src/components/petSprite'
 
@@ -34,6 +35,46 @@ export default function ChatScreen() {
   useEffect(() => {
     flatListRef.current?.scrollToEnd({ animated: true })
   }, [messages])
+
+  async function handleBlockResponse(cmd: AIBlockResponse) {
+    if (cmd.action === 'list_blocked') {
+      const apps = await getApps()
+      const blocked = apps.filter(a => a.isBlocked)
+      const allowed = apps.filter(a => !a.isBlocked)
+      let msg = ''
+      if (blocked.length > 0) msg += `🚫 Bloqueadas: ${blocked.map(a => a.appName).join(', ')}\n`
+      if (allowed.length > 0) msg += `✅ Permitidas: ${allowed.map(a => a.appName).join(', ')}`
+      if (!msg) msg = 'No hay apps configuradas. Ve a Settings > Apps para añadir.'
+      setMessages(prev => [...prev, { role: 'assistant', content: msg }])
+      return
+    }
+
+    if (cmd.action === 'block_app' && cmd.packageName) {
+      await upsertApp(cmd.packageName, cmd.appName || cmd.packageName, true)
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `✅ He bloqueado **${cmd.appName || cmd.packageName}**${cmd.reason ? ` (${cmd.reason})` : ''}. Lo tendrás restringido durante tus tareas.`,
+      }])
+      return
+    }
+
+    if (cmd.action === 'unblock_app' && cmd.packageName) {
+      await upsertApp(cmd.packageName, cmd.appName || cmd.packageName, false)
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `✅ He desbloqueado **${cmd.appName || cmd.packageName}**. Ya puedes usarlo libremente.`,
+      }])
+      return
+    }
+
+    if (cmd.action === 'block_suggestion') {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `💡 ¿Quieres que bloquee **${cmd.appName || ''}**?${cmd.reason ? ` (${cmd.reason})` : ''}\n\nDi "sí" para bloquearlo o "no" para ignorarlo.`,
+      }])
+      return
+    }
+  }
 
   async function handleSend() {
     if (!input.trim() || loading) return
@@ -88,7 +129,16 @@ export default function ChatScreen() {
             setContext('general')
           }
         } catch {
-          // Not a JSON response, continue conversation
+          // Not a task-plan JSON
+        }
+
+        try {
+          const blockCmd: AIBlockResponse = JSON.parse(jsonMatch[0])
+          if (blockCmd.action && ['block_app', 'unblock_app', 'list_blocked', 'block_suggestion'].includes(blockCmd.action)) {
+            await handleBlockResponse(blockCmd)
+          }
+        } catch {
+          // Not a blocking JSON either
         }
       }
     } catch (error) {

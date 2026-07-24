@@ -9,6 +9,7 @@ interface BlockerNativeModule {
   stopBlockingService(): Promise<void>
   isServiceRunning(): Promise<boolean>
   getInstalledApps(): Promise<{ packageName: string; appName: string }[]>
+  getCurrentForegroundApp(): Promise<string>
   showOverlay(): Promise<void>
   hideOverlay(): Promise<void>
 }
@@ -87,6 +88,28 @@ export async function addBlockedApp(packageName: string, appName: string): Promi
     'INSERT OR REPLACE INTO blocked_apps (packageName, appName, isBlocked) VALUES (?, ?, 1)',
     packageName, appName
   )
+}
+
+export async function getCurrentForegroundApp(): Promise<string> {
+  if (Platform.OS !== 'android') return ''
+  const module = getNativeModule()
+  if (!module) return ''
+  try {
+    return await module.getCurrentForegroundApp()
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Check if the current foreground app is blocked.
+ * If so, returns the BlockedApp; otherwise null.
+ */
+export async function checkForegroundBlocked(): Promise<BlockedApp | null> {
+  const foreground = await getCurrentForegroundApp()
+  if (!foreground) return null
+  const blocked = await getBlockedApps()
+  return blocked.find(a => a.packageName === foreground) ?? null
 }
 
 export async function removeBlockedApp(packageName: string): Promise<void> {
