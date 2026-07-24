@@ -137,7 +137,7 @@ export default function ChatScreen() {
         }
       )
 
-      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      const jsonMatch = response.match(/\{[\s\S]*?\}/)
       const conversationalText = jsonMatch ? stripJson(response) : response
 
       if (jsonMatch) {

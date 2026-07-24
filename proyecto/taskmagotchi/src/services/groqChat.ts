@@ -80,6 +80,9 @@ async function callGroq(messages: GroqMessage[]): Promise<string> {
   }
 
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+
     const response = await fetch(GROQ_API_BASE, {
       method: 'POST',
       headers: {
@@ -92,7 +95,9 @@ async function callGroq(messages: GroqMessage[]): Promise<string> {
         temperature: 0.7,
         max_tokens: 1024,
       }),
+      signal: controller.signal,
     })
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       throw new Error(`Groq API error: ${response.status}`)

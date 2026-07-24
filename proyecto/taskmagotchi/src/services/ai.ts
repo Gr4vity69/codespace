@@ -22,9 +22,12 @@ export async function verifyTaskCompletion(
   }
 
   try {
-    const response = await fetch(`${GEMINI_API_BASE}?key=${apiKey}`, {
+    const response = await fetch(GEMINI_API_BASE, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
       body: JSON.stringify({
         contents: [{
           parts: [
@@ -57,7 +60,7 @@ export async function verifyTaskCompletion(
     const data: GeminiResponse = await response.json()
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    const jsonMatch = text.match(/\{[\s\S]*?\}/)
     if (jsonMatch) {
       const result = JSON.parse(jsonMatch[0])
       return {
