@@ -22,6 +22,9 @@ export async function verifyTaskCompletion(
   }
 
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+
     const response = await fetch(GEMINI_API_BASE, {
       method: 'POST',
       headers: {
@@ -51,7 +54,9 @@ export async function verifyTaskCompletion(
           ],
         }],
       }),
+      signal: controller.signal,
     })
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       throw new Error(`Gemini API error: ${response.status}`)

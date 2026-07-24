@@ -17,6 +17,7 @@ export default function CameraScreen() {
   const cameraRef = useRef<CameraView>(null)
   const [permission, requestPermission] = useCameraPermissions()
   const [photoUri, setPhotoUri] = useState<string | null>(null)
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null)
   const [verifying, setVerifying] = useState(false)
   const [verified, setVerified] = useState<boolean | null>(null)
   const [reason, setReason] = useState('')
@@ -48,6 +49,7 @@ export default function CameraScreen() {
       const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.7 })
       if (photo?.uri) {
         setPhotoUri(photo.uri)
+        if (photo.base64) setPhotoBase64(photo.base64)
       }
     } catch (error) {
       Alert.alert('Error', 'No se pudo tomar la foto')
@@ -59,26 +61,34 @@ export default function CameraScreen() {
     setVerifying(true)
 
     try {
-      const base64 = await FileSystem.readAsStringAsync(photoUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      })
+      // Usar base64 de la captura, o leer el archivo como fallback
+      let b64 = photoBase64
+      if (!b64) {
+        b64 = await FileSystem.readAsStringAsync(photoUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        })
+      }
 
-      const result = await verifyTaskCompletion(base64, task.title, task.description)
+      const result = await verifyTaskCompletion(b64, task.title, task.description)
       setVerified(result.verified)
       setReason(result.reason)
 
-      if (result.verified && pet) {
-        const reward = calculateTaskReward(task, true, false)
-        const updatedPet = addCoins(addXp(pet, reward.xp), reward.coins)
-        await updatePet(updatedPet)
-      }
-
+      // 1) Primero actualizar la tarea en DB (fuente de verdad)
       await updateTask(task.id, {
         status: result.verified ? 'verified' : 'in_progress',
         photoUri,
         aiVerified: result.verified,
         completedAt: result.verified ? Date.now() : null,
       })
+
+      // 2) SOLO si la tarea se actualizó bien, dar recompensa a la mascota
+      if (result.verified && pet) {
+        const hasStreak = (pet.streak ?? 0) > 0
+        const reward = calculateTaskReward(task, true, hasStreak)
+        const updatedPet = addCoins(addXp(pet, reward.xp), reward.coins)
+        await updatePet(updatedPet)
+      }
+
       await loadTasks()
     } catch (error) {
       Alert.alert('Error', 'No se pudo verificar la tarea')
@@ -89,10 +99,21 @@ export default function CameraScreen() {
 
   async function handleSkipAI() {
     if (!task || !pet) return
-    const reward = calculateTaskReward(task, false, false)
+
+    // 1) Primero actualizar la tarea
+    await updateTask(task.id, {
+      status: 'verified',
+      photoUri: photoUri || undefined,
+      aiVerified: false,
+      completedAt: Date.now(),
+    })
+
+    // 2) Luego dar recompensa
+    const hasStreak = (pet.streak ?? 0) > 0
+    const reward = calculateTaskReward(task, false, hasStreak)
     const updatedPet = addCoins(addXp(pet, reward.xp), reward.coins)
     await updatePet(updatedPet)
-    await updateTask(task.id, { status: 'verified', completedAt: Date.now() })
+
     await loadTasks()
     Alert.alert('✅ Tarea completada', `+${reward.xp} XP, +${reward.coins} 🪙`)
     router.back()
@@ -100,6 +121,7 @@ export default function CameraScreen() {
 
   function handleRetry() {
     setPhotoUri(null)
+    setPhotoBase64(null)
     setVerified(null)
     setReason('')
   }
