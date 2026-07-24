@@ -13,6 +13,7 @@ interface BlockerNativeModule {
   showOverlay(): Promise<void>
   hideOverlay(): Promise<void>
   requestOverlayPermission(): Promise<void>
+  requestAccessibilityPermission(): Promise<void>
   requestUsageStatsPermission(): Promise<void>
   hasUsageStatsPermission(): Promise<boolean>
 }
@@ -144,6 +145,18 @@ export async function hideBlockingOverlay(): Promise<void> {
 
 export function isBlockedApp(appPackageName: string, blockedApps: BlockedApp[]): boolean {
   return blockedApps.some(app => app.packageName === appPackageName && app.isBlocked)
+}
+
+export async function requestAccessibilityService(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false
+  const module = getNativeModule()
+  if (!module) return false
+  try {
+    await module.requestAccessibilityPermission()
+    return true
+  } catch {
+    return false
+  }
 }
 
 export async function requestOverlayPermission(): Promise<boolean> {

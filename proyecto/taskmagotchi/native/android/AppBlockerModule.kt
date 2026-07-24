@@ -150,6 +150,19 @@ class AppBlockerModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun requestAccessibilityPermission(promise: Promise) {
+    try {
+      val context = reactApplicationContext
+      val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      context.startActivity(intent)
+      promise.resolve(true)
+    } catch (e: Exception) {
+      promise.reject("INTENT_ERROR", e.message)
+    }
+  }
+
+  @ReactMethod
   fun requestUsageStatsPermission(promise: Promise) {
     try {
       val context = reactApplicationContext
