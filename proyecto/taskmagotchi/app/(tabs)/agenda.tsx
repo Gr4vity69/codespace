@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native'
-import { RetroPanel, RetroScreen, RetroSectionTitle, retroColors } from '../../src/components/retroUi'
+import { RetroPanel, RetroScreen, RetroSectionTitle, retroColors, monoFont } from '../../src/components/retroUi'
 import { useTaskStore } from '../../src/store/taskStore'
 import { formatTimestampToTime } from '../../src/utils/timeHelpers'
 import type { Task } from '../../src/types'
@@ -140,13 +140,13 @@ const styles = StyleSheet.create({
 
   // Header
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  brand: { color: retroColors.text, fontSize: 18, fontFamily: 'monospace', fontWeight: '800', letterSpacing: 2 },
-  brandSub: { color: retroColors.muted, fontSize: 10, fontFamily: 'monospace', letterSpacing: 1.2, marginTop: 2 },
+  brand: { color: retroColors.text, fontSize: 18, fontFamily: monoFont, fontWeight: '800', letterSpacing: 2 },
+  brandSub: { color: retroColors.muted, fontSize: 10, fontFamily: monoFont, letterSpacing: 1.2, marginTop: 2 },
   dateBadge: {
     borderWidth: 2, borderColor: retroColors.border,
     backgroundColor: retroColors.panel, paddingHorizontal: 8, paddingVertical: 4,
   },
-  dateBadgeText: { color: retroColors.text, fontSize: 10, fontFamily: 'monospace', letterSpacing: 0.8 },
+  dateBadgeText: { color: retroColors.text, fontSize: 10, fontFamily: monoFont, letterSpacing: 0.8 },
 
   // Sections
   section: { gap: 8 },
@@ -154,8 +154,8 @@ const styles = StyleSheet.create({
   // Empty
   emptyPanel: { alignItems: 'center', gap: 6, padding: 18 },
   emptyIcon: { fontSize: 26, color: retroColors.text },
-  emptyText: { fontSize: 14, fontWeight: '700', color: retroColors.text, fontFamily: 'monospace' },
-  emptySub: { fontSize: 11, color: retroColors.muted, fontFamily: 'monospace', textAlign: 'center' },
+  emptyText: { fontSize: 14, fontWeight: '700', color: retroColors.text, fontFamily: monoFont },
+  emptySub: { fontSize: 11, color: retroColors.muted, fontFamily: monoFont, textAlign: 'center' },
 
   // Timeline
   timeline: { gap: 0 },
@@ -170,16 +170,16 @@ const styles = StyleSheet.create({
   // Task card
   taskCard: { flex: 1, gap: 4, paddingVertical: 10 },
   taskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  taskTitle: { color: retroColors.text, fontSize: 13, fontWeight: '700', fontFamily: 'monospace', flex: 1 },
-  taskTime: { color: retroColors.muted, fontSize: 10, fontFamily: 'monospace' },
-  taskDesc: { color: retroColors.muted, fontSize: 11, fontFamily: 'monospace' },
+  taskTitle: { color: retroColors.text, fontSize: 13, fontWeight: '700', fontFamily: monoFont, flex: 1 },
+  taskTime: { color: retroColors.muted, fontSize: 10, fontFamily: monoFont },
+  taskDesc: { color: retroColors.muted, fontSize: 11, fontFamily: monoFont },
   badge: { paddingHorizontal: 6, paddingVertical: 2 },
-  badgeText: { color: '#000', fontSize: 9, fontFamily: 'monospace', fontWeight: '700' },
+  badgeText: { color: '#000', fontSize: 9, fontFamily: monoFont, fontWeight: '700' },
 
   // Unscheduled
   unscheduledList: { gap: 8 },
 
   // Soon
   soonPanel: { gap: 6 },
-  soonItem: { color: retroColors.text, fontSize: 12, fontFamily: 'monospace', lineHeight: 18 },
+  soonItem: { color: retroColors.text, fontSize: 12, fontFamily: monoFont, lineHeight: 18 },
 })

@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router'
 import { useTaskStore } from '../../src/store/taskStore'
 import { usePetStore } from '../../src/store/petStore'
 import { calculateTaskReward } from '../../src/utils/petEngine'
-import { PixelButton, RetroInputShell, RetroPanel, RetroScreen, retroColors } from '../../src/components/retroUi'
+import { PixelButton, RetroInputShell, RetroPanel, RetroScreen, retroColors, monoFont } from '../../src/components/retroUi'
 import type { Task, TaskPriority } from '../../src/types'
 
 export default function HomeScreen() {
@@ -256,25 +256,25 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, gap: 14 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  brand: { color: retroColors.text, fontSize: 20, fontFamily: 'monospace', fontWeight: '800', letterSpacing: 2 },
-  brandSub: { color: retroColors.muted, fontSize: 10, fontFamily: 'monospace', letterSpacing: 1.2, marginTop: 2 },
+  brand: { color: retroColors.text, fontSize: 20, fontFamily: monoFont, fontWeight: '800', letterSpacing: 2 },
+  brandSub: { color: retroColors.muted, fontSize: 10, fontFamily: monoFont, letterSpacing: 1.2, marginTop: 2 },
   addButton: { width: 46, minHeight: 46, paddingHorizontal: 0 },
   statsRow: { flexDirection: 'row', gap: 6, marginRight: 8 },
-  statBadge: { color: retroColors.text, fontSize: 12, fontFamily: 'monospace', fontWeight: '700', letterSpacing: 0.8 },
+  statBadge: { color: retroColors.text, fontSize: 12, fontFamily: monoFont, fontWeight: '700', letterSpacing: 0.8 },
 
   // Timer Panel
   timerPanel: { gap: 8, alignItems: 'center', paddingVertical: 16 },
   timerPanelTimeUp: { borderColor: retroColors.danger },
-  timerTaskName: { color: retroColors.text, fontSize: 16, fontWeight: '800', fontFamily: 'monospace', textAlign: 'center' },
-  timerDisplay: { fontSize: 48, fontWeight: '800', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', letterSpacing: 4 },
-  timerLabel: { fontSize: 11, color: retroColors.muted, fontFamily: 'monospace' },
+  timerTaskName: { color: retroColors.text, fontSize: 16, fontWeight: '800', fontFamily: monoFont, textAlign: 'center' },
+  timerDisplay: { fontSize: 48, fontWeight: '800', fontFamily: monoFont, letterSpacing: 4 },
+  timerLabel: { fontSize: 11, color: retroColors.muted, fontFamily: monoFont },
   timerActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
   timerBtn: { minHeight: 38, paddingHorizontal: 16 },
-  timeUpSub: { fontSize: 12, color: retroColors.danger, fontFamily: 'monospace', textAlign: 'center' },
+  timeUpSub: { fontSize: 12, color: retroColors.danger, fontFamily: monoFont, textAlign: 'center' },
 
   // Slider
   sliderSection: { gap: 8 },
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: retroColors.text, fontFamily: 'monospace', letterSpacing: 1.2 },
+  sectionLabel: { fontSize: 12, fontWeight: '700', color: retroColors.text, fontFamily: monoFont, letterSpacing: 1.2 },
   sliderContent: { gap: 10, paddingBottom: 4 },
   taskCard: {
     width: 140,
@@ -289,15 +289,15 @@ const styles = StyleSheet.create({
     backgroundColor: retroColors.panelSoft,
   },
   priorityLine: { height: 3, width: '100%' },
-  cardTitle: { color: retroColors.text, fontSize: 12, fontWeight: '700', fontFamily: 'monospace' },
-  cardTime: { color: retroColors.muted, fontSize: 10, fontFamily: 'monospace' },
-  cardApps: { color: retroColors.muted, fontSize: 9, fontFamily: 'monospace' },
+  cardTitle: { color: retroColors.text, fontSize: 12, fontWeight: '700', fontFamily: monoFont },
+  cardTime: { color: retroColors.muted, fontSize: 10, fontFamily: monoFont },
+  cardApps: { color: retroColors.muted, fontSize: 9, fontFamily: monoFont },
 
   // Empty
   emptyPanel: { alignItems: 'center', gap: 6, padding: 18 },
   emptyIcon: { fontSize: 26, color: retroColors.text },
-  emptyText: { fontSize: 14, fontWeight: '700', color: retroColors.text, fontFamily: 'monospace' },
-  emptySub: { fontSize: 11, color: retroColors.muted, fontFamily: 'monospace' },
+  emptyText: { fontSize: 14, fontWeight: '700', color: retroColors.text, fontFamily: monoFont },
+  emptySub: { fontSize: 11, color: retroColors.muted, fontFamily: monoFont },
 
   // Quick Actions
   quickActions: { flexDirection: 'row', gap: 8 },
@@ -306,15 +306,15 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   modal: { backgroundColor: retroColors.background, borderTopWidth: 2, borderColor: retroColors.border, padding: 16, maxHeight: '88%', gap: 10 },
-  modalTitle: { fontSize: 16, fontWeight: '800', color: retroColors.text, marginBottom: 6, fontFamily: 'monospace', letterSpacing: 1.4 },
-  input: { color: retroColors.text, fontFamily: 'monospace', fontSize: 13, padding: 0 },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: retroColors.text, marginBottom: 6, fontFamily: monoFont, letterSpacing: 1.4 },
+  input: { color: retroColors.text, fontFamily: monoFont, fontSize: 13, padding: 0 },
   inputMultiline: { minHeight: 72, textAlignVertical: 'top' },
   multilineShell: { minHeight: 92 },
-  label: { fontSize: 11, fontWeight: '700', color: retroColors.text, marginBottom: 4, marginTop: 2, fontFamily: 'monospace', letterSpacing: 1 },
+  label: { fontSize: 11, fontWeight: '700', color: retroColors.text, marginBottom: 4, marginTop: 2, fontFamily: monoFont, letterSpacing: 1 },
   priorityRow: { flexDirection: 'row', gap: 8 },
   priorityOption: { flex: 1, paddingVertical: 10, borderWidth: 2, borderColor: retroColors.border, backgroundColor: retroColors.panel, alignItems: 'center' },
   priorityOptionActive: { backgroundColor: retroColors.text },
-  priorityOptionText: { fontSize: 11, fontWeight: '700', color: retroColors.text, fontFamily: 'monospace' },
+  priorityOptionText: { fontSize: 11, fontWeight: '700', color: retroColors.text, fontFamily: monoFont },
   priorityOptionTextActive: { color: retroColors.background },
   modalButtons: { flexDirection: 'row', gap: 8, marginTop: 4 },
   modalButton: { flex: 1 },

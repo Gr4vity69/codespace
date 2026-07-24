@@ -14,7 +14,7 @@ import PetSprite, { AVAILABLE_SKINS } from '../../src/components/petSprite'
 import type { MathChallenge, BlockedApp, Schedule, PetMood } from '../../src/types'
 import {
   PixelButton, RetroInputShell, RetroPanel, RetroScreen,
-  RetroSectionTitle, retroColors,
+  RetroSectionTitle, retroColors, monoFont,
 } from '../../src/components/retroUi'
 
 // ─── Day-of-week helper ─────────────────────────────────────────
@@ -497,74 +497,74 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: { padding: 16, paddingBottom: 24, gap: 12 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  brand: { color: retroColors.text, fontSize: 18, fontFamily: 'monospace', fontWeight: '800', letterSpacing: 2 },
-  brandSub: { color: retroColors.muted, fontSize: 10, fontFamily: 'monospace', letterSpacing: 1.2, marginTop: 2 },
+  brand: { color: retroColors.text, fontSize: 18, fontFamily: monoFont, fontWeight: '800', letterSpacing: 2 },
+  brandSub: { color: retroColors.muted, fontSize: 10, fontFamily: monoFont, letterSpacing: 1.2, marginTop: 2 },
   versionBadge: { borderWidth: 2, borderColor: retroColors.border, backgroundColor: retroColors.panel, paddingHorizontal: 8, paddingVertical: 4 },
-  versionBadgeText: { color: retroColors.text, fontSize: 10, fontFamily: 'monospace', letterSpacing: 1.2 },
+  versionBadgeText: { color: retroColors.text, fontSize: 10, fontFamily: monoFont, letterSpacing: 1.2 },
   card: { gap: 8 },
   settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  settingLabel: { fontSize: 12, color: retroColors.text, fontWeight: '700', marginBottom: 4, fontFamily: 'monospace' },
+  settingLabel: { fontSize: 12, color: retroColors.text, fontWeight: '700', marginBottom: 4, fontFamily: monoFont },
   settingAction: { fontSize: 18, color: retroColors.text },
   renameRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   renameInputShell: { flex: 1 },
   fieldSpacing: { marginBottom: 8 },
-  input: { flex: 1, color: retroColors.text, fontFamily: 'monospace', fontSize: 13, padding: 0 },
+  input: { flex: 1, color: retroColors.text, fontFamily: monoFont, fontSize: 13, padding: 0 },
   saveBtn: { width: 104, minHeight: 42 },
-  hint: { fontSize: 11, color: retroColors.muted, marginTop: 6, textAlign: 'center', fontFamily: 'monospace' },
-  placeholder: { fontSize: 12, color: retroColors.text, textAlign: 'center', fontFamily: 'monospace' },
-  version: { textAlign: 'center', fontSize: 11, color: retroColors.muted, marginVertical: 18, fontFamily: 'monospace', letterSpacing: 1.2 },
+  hint: { fontSize: 11, color: retroColors.muted, marginTop: 6, textAlign: 'center', fontFamily: monoFont },
+  placeholder: { fontSize: 12, color: retroColors.text, textAlign: 'center', fontFamily: monoFont },
+  version: { textAlign: 'center', fontSize: 11, color: retroColors.muted, marginVertical: 18, fontFamily: monoFont, letterSpacing: 1.2 },
 
   // Pet stats
   petStats: { borderTopWidth: 1, borderTopColor: retroColors.borderSoft, paddingTop: 6 },
-  statText: { fontSize: 11, color: retroColors.muted, fontFamily: 'monospace', textAlign: 'center' },
+  statText: { fontSize: 11, color: retroColors.muted, fontFamily: monoFont, textAlign: 'center' },
 
   // Apps
   appRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: 'rgba(247,240,219,0.08)',
   },
-  appName: { color: retroColors.text, fontSize: 13, fontFamily: 'monospace', flex: 1 },
+  appName: { color: retroColors.text, fontSize: 13, fontFamily: monoFont, flex: 1 },
   appActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   appTypeBadge: { paddingHorizontal: 6, paddingVertical: 2 },
-  appTypeText: { color: '#000', fontSize: 9, fontWeight: '700', fontFamily: 'monospace' },
+  appTypeText: { color: '#000', fontSize: 9, fontWeight: '700', fontFamily: monoFont },
   appDelete: { color: retroColors.danger, fontSize: 14, fontWeight: '700', paddingHorizontal: 4 },
 
   // Schedules
   schedDayCard: { gap: 6, paddingVertical: 10 },
   schedDayHeader: {},
-  schedDayName: { color: retroColors.text, fontSize: 13, fontWeight: '700', fontFamily: 'monospace', letterSpacing: 1 },
-  schedEmpty: { color: retroColors.muted, fontSize: 11, fontFamily: 'monospace', textAlign: 'center' },
+  schedDayName: { color: retroColors.text, fontSize: 13, fontWeight: '700', fontFamily: monoFont, letterSpacing: 1 },
+  schedEmpty: { color: retroColors.muted, fontSize: 11, fontFamily: monoFont, textAlign: 'center' },
   schedRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   schedTimeBtn: { borderWidth: 1, borderColor: retroColors.borderSoft, paddingHorizontal: 10, paddingVertical: 4, flex: 1 },
-  schedTimeText: { color: retroColors.text, fontSize: 12, fontFamily: 'monospace' },
+  schedTimeText: { color: retroColors.text, fontSize: 12, fontFamily: monoFont },
 
   // Day toggle
   dayToggle: { borderWidth: 2, borderColor: retroColors.borderSoft, paddingHorizontal: 8, paddingVertical: 4 },
   dayToggleActive: { borderColor: retroColors.success, backgroundColor: 'rgba(136, 227, 139, 0.15)' },
-  dayToggleText: { color: retroColors.muted, fontSize: 10, fontWeight: '700', fontFamily: 'monospace' },
+  dayToggleText: { color: retroColors.muted, fontSize: 10, fontWeight: '700', fontFamily: monoFont },
   dayToggleTextActive: { color: retroColors.success },
 
   // Skins
   skinPreview: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  skinName: { color: retroColors.text, fontSize: 14, fontWeight: '700', fontFamily: 'monospace' },
-  skinHint: { color: retroColors.muted, fontSize: 11, fontFamily: 'monospace', marginTop: 2 },
+  skinName: { color: retroColors.text, fontSize: 14, fontWeight: '700', fontFamily: monoFont },
+  skinHint: { color: retroColors.muted, fontSize: 11, fontFamily: monoFont, marginTop: 2 },
   skinList: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
   skinOption: { alignItems: 'center', gap: 4, borderWidth: 2, borderColor: retroColors.borderSoft, padding: 8 },
   skinOptionActive: { borderColor: retroColors.text, backgroundColor: retroColors.panelSoft },
-  skinOptionName: { color: retroColors.text, fontSize: 10, fontFamily: 'monospace' },
+  skinOptionName: { color: retroColors.text, fontSize: 10, fontFamily: monoFont },
 
   // Type row
   typeRow: { flexDirection: 'row', gap: 8 },
   typeOption: { flex: 1, paddingVertical: 10, borderWidth: 2, borderColor: retroColors.border, backgroundColor: retroColors.panel, alignItems: 'center' },
   typeOptionActive: { backgroundColor: retroColors.text },
-  typeOptionText: { fontSize: 11, fontWeight: '700', color: retroColors.text, fontFamily: 'monospace' },
+  typeOptionText: { fontSize: 11, fontWeight: '700', color: retroColors.text, fontFamily: monoFont },
   typeOptionTextActive: { color: retroColors.background },
 
   // Modals
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 24 },
   modal: { backgroundColor: retroColors.background, borderWidth: 2, borderColor: retroColors.border, padding: 16, gap: 10 },
-  modalTitle: { fontSize: 16, fontWeight: '800', color: retroColors.text, textAlign: 'center', marginBottom: 4, fontFamily: 'monospace', letterSpacing: 1.4 },
-  challengeText: { fontSize: 24, fontWeight: '800', color: retroColors.text, textAlign: 'center', marginVertical: 10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: retroColors.text, textAlign: 'center', marginBottom: 4, fontFamily: monoFont, letterSpacing: 1.4 },
+  challengeText: { fontSize: 24, fontWeight: '800', color: retroColors.text, textAlign: 'center', marginVertical: 10, fontFamily: monoFont },
   modalButtons: { flexDirection: 'row', gap: 8, marginTop: 6 },
   modalButton: { flex: 1 },
 })

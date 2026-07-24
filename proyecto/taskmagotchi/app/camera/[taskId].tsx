@@ -9,7 +9,7 @@ import { useTaskStore } from '../../src/store/taskStore'
 import { usePetStore } from '../../src/store/petStore'
 import { verifyTaskCompletion } from '../../src/services/ai'
 import { addXp, addCoins, calculateTaskReward } from '../../src/utils/petEngine'
-import { PixelButton, RetroPanel, RetroScreen, retroColors } from '../../src/components/retroUi'
+import { PixelButton, RetroPanel, RetroScreen, retroColors, monoFont } from '../../src/components/retroUi'
 
 export default function CameraScreen() {
   const { taskId } = useLocalSearchParams<{ taskId: string }>()
@@ -196,12 +196,12 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   closeButton: { width: 42, height: 42, borderWidth: 2, borderColor: retroColors.border, backgroundColor: retroColors.panel, alignItems: 'center', justifyContent: 'center' },
-  backBtn: { fontSize: 18, color: retroColors.text, fontFamily: 'monospace', fontWeight: '800' },
-  headerTitle: { fontSize: 14, fontWeight: '800', color: retroColors.text, flex: 1, textAlign: 'center', fontFamily: 'monospace', letterSpacing: 1.2 },
+  backBtn: { fontSize: 18, color: retroColors.text, fontFamily: monoFont, fontWeight: '800' },
+  headerTitle: { fontSize: 14, fontWeight: '800', color: retroColors.text, flex: 1, textAlign: 'center', fontFamily: monoFont, letterSpacing: 1.2 },
   centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  permissionText: { color: retroColors.text, fontSize: 16, textAlign: 'center', marginBottom: 20, fontFamily: 'monospace' },
+  permissionText: { color: retroColors.text, fontSize: 16, textAlign: 'center', marginBottom: 20, fontFamily: monoFont },
   permissionBtn: { backgroundColor: retroColors.text, paddingHorizontal: 24, paddingVertical: 14, borderWidth: 2, borderColor: retroColors.border },
-  permissionBtnText: { color: retroColors.background, fontWeight: '700', fontSize: 15, fontFamily: 'monospace' },
+  permissionBtnText: { color: retroColors.background, fontWeight: '700', fontSize: 15, fontFamily: monoFont },
   cameraContainer: { flex: 1, gap: 16 },
   cameraFrame: { flex: 1, borderWidth: 2, borderColor: retroColors.border, backgroundColor: retroColors.panelMuted, overflow: 'hidden' },
   camera: { flex: 1 },
@@ -216,12 +216,12 @@ const styles = StyleSheet.create({
   verifyBtn: { flex: 1 },
   resultContainer: { alignItems: 'center', gap: 10, marginTop: 12, padding: 16 },
   resultIcon: { fontSize: 48 },
-  resultText: { fontSize: 18, fontWeight: 'bold', marginBottom: 0, fontFamily: 'monospace' },
-  reasonText: { fontSize: 12, color: retroColors.muted, textAlign: 'center', fontFamily: 'monospace' },
+  resultText: { fontSize: 18, fontWeight: 'bold', marginBottom: 0, fontFamily: monoFont },
+  reasonText: { fontSize: 12, color: retroColors.muted, textAlign: 'center', fontFamily: monoFont },
   retryVerifyBtn: { width: '100%' },
   retryVerifyText: { color: retroColors.text, fontWeight: '600' },
   doneBtn: { width: '100%' },
   doneBtnText: { color: '#ffffff', fontWeight: '700', fontSize: 15 },
   skipBtn: { marginTop: 16, alignSelf: 'center', paddingVertical: 10 },
-  skipBtnText: { color: retroColors.muted, fontSize: 12, textDecorationLine: 'underline', fontFamily: 'monospace' },
+  skipBtnText: { color: retroColors.muted, fontSize: 12, textDecorationLine: 'underline', fontFamily: monoFont },
 })

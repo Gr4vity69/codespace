@@ -11,7 +11,7 @@ import { timeStringToTimestamp, formatTimestampToTime } from '../../src/utils/ti
 import { getApps, upsertApp } from '../../src/services/settingsDb'
 import { loadRecentConversations, saveConversation, formatConversationSummary } from '../../src/services/conversationMemory'
 import type { ChatMessage, AIPlanResponse, AIBlockResponse } from '../../src/types'
-import { PixelButton, RetroInputShell, RetroScreen, SpeechBubble, retroColors } from '../../src/components/retroUi'
+import { PixelButton, RetroInputShell, RetroScreen, SpeechBubble, retroColors, monoFont } from '../../src/components/retroUi'
 import PetSprite from '../../src/components/petSprite'
 
 export default function ChatScreen() {
@@ -307,8 +307,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   mascotInfo: { gap: 2 },
-  mascotName: { color: retroColors.text, fontSize: 14, fontWeight: '800', fontFamily: 'monospace', letterSpacing: 1.2 },
-  mascotMood: { color: retroColors.muted, fontSize: 10, fontFamily: 'monospace', letterSpacing: 1 },
+  mascotName: { color: retroColors.text, fontSize: 14, fontWeight: '800', fontFamily: monoFont, letterSpacing: 1.2 },
+  mascotMood: { color: retroColors.muted, fontSize: 10, fontFamily: monoFont, letterSpacing: 1 },
 
   // Messages
   messageList: { paddingHorizontal: 16, paddingVertical: 10, gap: 12 },
@@ -317,11 +317,11 @@ const styles = StyleSheet.create({
   assistantRow: { alignItems: 'flex-start' },
   messageBubbleWrap: { maxWidth: '88%' },
   typingIndicator: { paddingHorizontal: 16, paddingBottom: 8 },
-  typingText: { fontSize: 11, color: retroColors.muted, fontFamily: 'monospace', letterSpacing: 1.3 },
+  typingText: { fontSize: 11, color: retroColors.muted, fontFamily: monoFont, letterSpacing: 1.3 },
 
   // Input
   inputRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 16, alignItems: 'stretch' },
   inputShell: { flex: 1, minHeight: 52, justifyContent: 'center' },
-  input: { color: retroColors.text, fontFamily: 'monospace', fontSize: 14, minHeight: 24, maxHeight: 120, padding: 0, textAlignVertical: 'top' },
+  input: { color: retroColors.text, fontFamily: monoFont, fontSize: 14, minHeight: 24, maxHeight: 120, padding: 0, textAlignVertical: 'top' },
   sendBtn: { width: 56, paddingHorizontal: 0 },
 })

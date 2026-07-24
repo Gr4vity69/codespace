@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native'
 import { usePetStore } from '../../src/store/petStore'
 import {
-  PixelButton, RetroPanel, RetroScreen, RetroSectionTitle, retroColors,
+  PixelButton, RetroPanel, RetroScreen, RetroSectionTitle, retroColors, monoFont,
 } from '../../src/components/retroUi'
 import { AnimatedSprite, VENDOR_SPRITE } from '../../src/components/petSprite'
 import { getRewards, getUserRewards, purchaseReward } from '../../src/services/shopService'
@@ -181,11 +181,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
   },
   brand: {
-    color: retroColors.text, fontSize: 18, fontFamily: 'monospace',
+    color: retroColors.text, fontSize: 18, fontFamily: monoFont,
     fontWeight: '800', letterSpacing: 2,
   },
   brandSub: {
-    color: retroColors.muted, fontSize: 10, fontFamily: 'monospace',
+    color: retroColors.muted, fontSize: 10, fontFamily: monoFont,
     letterSpacing: 1.2, marginTop: 2,
   },
   coinsBadge: {
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     backgroundColor: retroColors.panel, paddingHorizontal: 10, paddingVertical: 6,
   },
   coinsBadgeText: {
-    color: retroColors.text, fontSize: 12, fontFamily: 'monospace', fontWeight: '700',
+    color: retroColors.text, fontSize: 12, fontFamily: monoFont, fontWeight: '700',
   },
 
   // Flash message
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     borderColor: retroColors.success, paddingVertical: 8,
   },
   flashText: {
-    color: retroColors.success, fontSize: 12, fontFamily: 'monospace',
+    color: retroColors.success, fontSize: 12, fontFamily: monoFont,
     fontWeight: '700', textAlign: 'center',
   },
 
@@ -210,16 +210,16 @@ const styles = StyleSheet.create({
   vendorInner: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   vendorText: { flex: 1 },
   vendorTitle: {
-    color: retroColors.text, fontSize: 13, fontWeight: '700', fontFamily: 'monospace',
+    color: retroColors.text, fontSize: 13, fontWeight: '700', fontFamily: monoFont,
   },
   vendorDesc: {
-    color: retroColors.muted, fontSize: 11, fontFamily: 'monospace', marginTop: 4,
+    color: retroColors.muted, fontSize: 11, fontFamily: monoFont, marginTop: 4,
   },
 
   // Loading
   loadingPanel: { alignItems: 'center', padding: 18 },
   loadingText: {
-    color: retroColors.muted, fontSize: 12, fontFamily: 'monospace',
+    color: retroColors.muted, fontSize: 12, fontFamily: monoFont,
   },
 
   // Rewards
@@ -232,10 +232,10 @@ const styles = StyleSheet.create({
   },
   rewardIcon: { fontSize: 20, color: retroColors.text },
   rewardName: {
-    color: retroColors.text, fontSize: 13, fontWeight: '700', fontFamily: 'monospace',
+    color: retroColors.text, fontSize: 13, fontWeight: '700', fontFamily: monoFont,
   },
   rewardDesc: {
-    color: retroColors.muted, fontSize: 10, fontFamily: 'monospace', marginTop: 2,
+    color: retroColors.muted, fontSize: 10, fontFamily: monoFont, marginTop: 2,
   },
   buyBtn: { minHeight: 38, paddingHorizontal: 12 },
 
@@ -245,12 +245,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 6,
   },
   ownedText: {
-    color: retroColors.success, fontSize: 10, fontFamily: 'monospace',
+    color: retroColors.success, fontSize: 10, fontFamily: monoFont,
     fontWeight: '700',
   },
 
   // Soon
   soonPanel: { gap: 6 },
-  soonText: { color: retroColors.text, fontSize: 12, fontFamily: 'monospace' },
-  soonSub: { color: retroColors.muted, fontSize: 10, fontFamily: 'monospace' },
+  soonText: { color: retroColors.text, fontSize: 12, fontFamily: monoFont },
+  soonSub: { color: retroColors.muted, fontSize: 10, fontFamily: monoFont },
 })

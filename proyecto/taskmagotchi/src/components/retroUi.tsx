@@ -16,7 +16,7 @@ export const retroColors = {
   danger: '#ff8a78',
 }
 
-const monoFont = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' })
+export const monoFont = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' })
 
 type ContainerProps = {
   children: ReactNode
