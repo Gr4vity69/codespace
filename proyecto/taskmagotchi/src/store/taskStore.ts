@@ -1,6 +1,11 @@
 import { create } from 'zustand'
 import type { Task } from '../types'
 import { getDb } from '../services/database'
+import { calculatePenalty } from '../utils/petEngine'
+import { usePetStore } from './petStore'
+
+// Track tasks that already had penalty applied (in-memory, resets on app restart)
+const penalizedTasks = new Set<number>()
 
 type CreateTaskInput = {
   title: string
@@ -40,6 +45,27 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const rows = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM tasks ORDER BY createdAt DESC')
       const tasks: Task[] = rows.map(mapRowToTask)
       set({ tasks, loading: false })
+
+      // Apply penalty for overdue tasks (one-time per session)
+      const now = Date.now()
+      for (const task of tasks) {
+        if (penalizedTasks.has(task.id)) continue
+        if (task.status !== 'pending' && task.status !== 'in_progress') continue
+
+        const deadline = task.deadline ?? (task.createdAt + task.estimatedMinutes * 60000)
+        if (deadline < now) {
+          const penalty = calculatePenalty(task.status)
+          if (penalty.coins < 0) {
+            const pet = usePetStore.getState().pet
+            if (pet) {
+              const { addCoins } = await import('../utils/petEngine')
+              await usePetStore.getState().updatePet(addCoins(pet, penalty.coins))
+              console.warn(`[penalty] Task #${task.id} overdue: ${penalty.coins} coins`)
+            }
+          }
+          penalizedTasks.add(task.id)
+        }
+      }
 
       const today = new Date()
       today.setHours(0, 0, 0, 0)
