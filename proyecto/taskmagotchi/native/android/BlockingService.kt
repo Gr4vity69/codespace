@@ -1,16 +1,16 @@
 package com.taskmagotchi.app
 
+import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
-import java.util.Timer
-import java.util.TimerTask
+import android.os.Looper
 
 class BlockingService : Service() {
 
@@ -26,7 +26,14 @@ class BlockingService : Service() {
       private set
   }
 
-  private var timer: Timer? = null
+  private val handler = Handler(Looper.getMainLooper())
+  private val checkRunnable = object : Runnable {
+    override fun run() {
+      val foregroundPkg = getForegroundPackage()
+      currentForegroundPackage = foregroundPkg
+      handler.postDelayed(this, CHECK_INTERVAL_MS)
+    }
+  }
 
   override fun onCreate() {
     super.onCreate()
@@ -43,38 +50,39 @@ class BlockingService : Service() {
   override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onDestroy() {
-    timer?.cancel()
-    timer = null
+    handler.removeCallbacks(checkRunnable)
     super.onDestroy()
   }
 
   private fun startMonitoring() {
-    timer = Timer()
-    timer?.scheduleAtFixedRate(object : TimerTask() {
-      override fun run() {
-        val foregroundPkg = getForegroundPackage()
-        currentForegroundPackage = foregroundPkg
-      }
-    }, 0, CHECK_INTERVAL_MS)
+    handler.post(checkRunnable)
   }
 
   private fun getForegroundPackage(): String? {
     try {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-        val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        val currentTime = System.currentTimeMillis()
-        val stats = usm.queryUsageStats(
-          UsageStatsManager.INTERVAL_DAILY,
-          currentTime - 1000 * 10,
-          currentTime
-        )
-        if (stats != null) {
-          val sortedStats = stats.sortedByDescending { it.lastTimeUsed }
-          return sortedStats.firstOrNull()?.packageName
+        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val tasks = am.getRunningTasks(1)
+        if (tasks != null && tasks.isNotEmpty()) {
+          return tasks[0]?.topActivity?.packageName
         }
       }
     } catch (e: Exception) {
-      // Fallback
+      // Fallback — intentar con UsageStatsManager
+      try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+          val usm = getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+          val currentTime = System.currentTimeMillis()
+          val stats = usm.queryUsageStats(
+            android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+            currentTime - 60 * 1000,
+            currentTime
+          )
+          if (stats != null) {
+            return stats.maxByOrNull { it.lastTimeUsed }?.packageName
+          }
+        }
+      } catch (_: Exception) {}
     }
     return null
   }

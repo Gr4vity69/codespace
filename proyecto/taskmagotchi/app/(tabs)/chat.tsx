@@ -96,7 +96,8 @@ export default function ChatScreen() {
   }
 
   function stripJson(text: string): string {
-    return text.replace(/\{[\s\S]*\}/, '').trim()
+    // Non-greedy: solo elimina el primer bloque JSON, no todo entre el primer { y el último }
+    return text.replace(/\{[\s\S]*?\}/, '').trim()
   }
 
   async function handleSend() {

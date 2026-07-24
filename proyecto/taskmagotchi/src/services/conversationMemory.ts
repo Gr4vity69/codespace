@@ -2,6 +2,23 @@ import { getDb } from './database'
 
 const MAX_HISTORY = 20
 
+let tableInitialized = false
+
+async function ensureTable(): Promise<void> {
+  if (tableInitialized) return
+  const db = getDb()
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS conversation_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userMessage TEXT NOT NULL,
+      aiResponse TEXT NOT NULL,
+      context TEXT NOT NULL DEFAULT 'general',
+      createdAt INTEGER NOT NULL
+    )
+  `)
+  tableInitialized = true
+}
+
 export interface ConversationEntry {
   id: number
   userMessage: string
@@ -15,6 +32,7 @@ export async function saveConversation(
   aiResponse: string,
   context: string,
 ): Promise<void> {
+  await ensureTable()
   const db = getDb()
   await db.runAsync(
     `INSERT INTO conversation_log (userMessage, aiResponse, context, createdAt)
@@ -29,6 +47,7 @@ export async function saveConversation(
 export async function loadRecentConversations(
   limit: number = MAX_HISTORY,
 ): Promise<ConversationEntry[]> {
+  await ensureTable()
   const db = getDb()
   return db.getAllAsync<ConversationEntry>(
     'SELECT * FROM conversation_log ORDER BY createdAt DESC LIMIT ?',
@@ -37,6 +56,7 @@ export async function loadRecentConversations(
 }
 
 export async function getTodaysConversations(): Promise<ConversationEntry[]> {
+  await ensureTable()
   const db = getDb()
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -47,6 +67,7 @@ export async function getTodaysConversations(): Promise<ConversationEntry[]> {
 }
 
 export async function clearConversationHistory(): Promise<void> {
+  await ensureTable()
   const db = getDb()
   await db.runAsync('DELETE FROM conversation_log')
 }
@@ -61,7 +82,7 @@ export function formatConversationSummary(entries: ConversationEntry[]): string 
       minute: '2-digit',
     })
     lines.push(`[${time}] Usuario: ${entry.userMessage.slice(0, 120)}`)
-    const aiPreview = entry.aiResponse.replace(/\{[\s\S]*\}/, '').trim().slice(0, 120)
+    const aiPreview = entry.aiResponse.replace(/\{[\s\S]*?\}/, '').trim().slice(0, 120)
     if (aiPreview) {
       lines.push(`[${time}] Magotchi: ${aiPreview}`)
     }

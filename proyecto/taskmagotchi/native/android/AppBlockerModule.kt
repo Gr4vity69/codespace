@@ -135,6 +135,24 @@ class AppBlockerModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun requestOverlayPermission(promise: Promise) {
+    try {
+      val context = reactApplicationContext
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        val intent = Intent(
+          Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+          android.net.Uri.parse("package:${context.packageName}")
+        )
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+      }
+      promise.resolve(true)
+    } catch (e: Exception) {
+      promise.reject("INTENT_ERROR", e.message)
+    }
+  }
+
+  @ReactMethod
   fun requestUsageStatsPermission(promise: Promise) {
     try {
       val context = reactApplicationContext

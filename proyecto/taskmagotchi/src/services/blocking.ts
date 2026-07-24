@@ -12,6 +12,9 @@ interface BlockerNativeModule {
   getCurrentForegroundApp(): Promise<string>
   showOverlay(): Promise<void>
   hideOverlay(): Promise<void>
+  requestOverlayPermission(): Promise<void>
+  requestUsageStatsPermission(): Promise<void>
+  hasUsageStatsPermission(): Promise<boolean>
 }
 
 let nativeModule: BlockerNativeModule | null = null
@@ -141,6 +144,41 @@ export async function hideBlockingOverlay(): Promise<void> {
 
 export function isBlockedApp(appPackageName: string, blockedApps: BlockedApp[]): boolean {
   return blockedApps.some(app => app.packageName === appPackageName && app.isBlocked)
+}
+
+export async function requestOverlayPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false
+  const module = getNativeModule()
+  if (!module) return false
+  try {
+    await module.requestOverlayPermission()
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function requestUsageStatsPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false
+  const module = getNativeModule()
+  if (!module) return false
+  try {
+    await module.requestUsageStatsPermission()
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function checkUsageStatsPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false
+  const module = getNativeModule()
+  if (!module) return false
+  try {
+    return await module.hasUsageStatsPermission()
+  } catch {
+    return false
+  }
 }
 
 export function isInBreakTime(schedules: { breakStart: string; breakEnd: string }[]): boolean {

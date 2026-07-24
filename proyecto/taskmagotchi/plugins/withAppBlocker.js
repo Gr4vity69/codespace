@@ -88,9 +88,12 @@ function withAppBlocker(expoConfig) {
   expoConfig = withMainApplication(expoConfig, (config) => {
     const mainApp = config.modResults.contents
 
-    // Add import
+    // Add import — solo si no existe ya (idempotente)
     const importLine = `import ${TARGET_PACKAGE}.AppBlockerPackage;`
-    if (!mainApp.includes(importLine)) {
+    const importPattern = new RegExp(
+      `import\\s+${TARGET_PACKAGE.replace('.', '\\.')}\\.AppBlockerPackage;`
+    )
+    if (!importPattern.test(mainApp)) {
       const lastImportIndex = mainApp.lastIndexOf('import ')
       const nextNewlineAfterImport = mainApp.indexOf('\n', lastImportIndex)
       config.modResults.contents =
@@ -99,7 +102,7 @@ function withAppBlocker(expoConfig) {
         mainApp.slice(nextNewlineAfterImport + 1)
     }
 
-    // Add package to getPackages list
+    // Add package to getPackages list — solo si no existe ya (idempotente)
     const packagesLine = 'packages.add(new AppBlockerPackage());'
     if (!mainApp.includes(packagesLine)) {
       const addPackagesIndex = mainApp.indexOf('packages.add(')
