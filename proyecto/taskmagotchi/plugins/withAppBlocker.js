@@ -84,14 +84,22 @@ function withAppBlocker(expoConfig) {
     return config
   })
 
-  // 2. Register AppBlockerPackage in MainApplication.java
+  // 2. Register AppBlockerPackage in MainApplication (Java or Kotlin)
   expoConfig = withMainApplication(expoConfig, (config) => {
     const mainApp = config.modResults.contents
 
-    // Add import — solo si no existe ya (idempotente)
+    // ── Detect language ────────────────────────────────────────────
+    // Kotlin: `class MainApplication :` or `override val/fun`
+    // Java: `class MainApplication extends` or `public class`
+    const isKotlin = /class\s+\w+\s*:\s*(Application|ReactApplication)/
+      .test(mainApp) || /override\s+(val|fun)/.test(mainApp)
+    const isNewArch = /\.packages\.apply\s*\{/.test(mainApp)
+
+    // ── Add import ─────────────────────────────────────────────────
+    // Semicolon works in both Java (required) and Kotlin (optional, harmless)
     const importLine = `import ${TARGET_PACKAGE}.AppBlockerPackage;`
     const importPattern = new RegExp(
-      `import\\s+${TARGET_PACKAGE.replace('.', '\\.')}\\.AppBlockerPackage;`
+      `import\\s+${TARGET_PACKAGE.replace(/\./g, '\\.')}\\.AppBlockerPackage;?`
     )
     if (!importPattern.test(mainApp)) {
       const lastImportIndex = mainApp.lastIndexOf('import ')
@@ -102,18 +110,62 @@ function withAppBlocker(expoConfig) {
         mainApp.slice(nextNewlineAfterImport + 1)
     }
 
-    // Add package to getPackages list — solo si no existe ya (idempotente)
-    const packagesLine = 'packages.add(new AppBlockerPackage());'
-    if (!mainApp.includes(packagesLine)) {
-      const addPackagesIndex = mainApp.indexOf('packages.add(')
-      if (addPackagesIndex !== -1) {
-        // Insert AFTER the last packages.add line
+    // ── Add package registration ───────────────────────────────────
+    if (isKotlin && isNewArch) {
+      // Kotlin + New Architecture: PackageList(this).packages.apply { add(...) }
+      // Insert inside the apply { } block after the `// add(` comment
+      const packagesLine = 'add(AppBlockerPackage())'
+      const alreadyExists =
+        mainApp.includes(packagesLine) ||
+        /\/\/\s*add\(AppBlockerPackage\)/.test(mainApp)
+      if (!alreadyExists) {
+        // Find the `// add(MyReactNativePackage())` comment and insert after it
+        const addCommentMatch = mainApp.match(/\/\/\s*add\(.*\)/)
+        if (addCommentMatch) {
+          const commentEnd = addCommentMatch.index + addCommentMatch[0].length
+          const eol = mainApp.indexOf('\n', commentEnd)
+          config.modResults.contents =
+            mainApp.slice(0, eol + 1) +
+            '        ' + packagesLine + '\n' +
+            mainApp.slice(eol + 1)
+        } else {
+          // Fallback: find `apply {` and insert right after the opening brace
+          const applyMatch = mainApp.match(/\.packages\.apply\s*\{/)
+          if (applyMatch) {
+            const braceEnd = applyMatch.index + applyMatch[0].length
+            config.modResults.contents =
+              mainApp.slice(0, braceEnd) + '\n' +
+              '        ' + packagesLine + '\n' +
+              mainApp.slice(braceEnd)
+          }
+        }
+      }
+    } else if (isKotlin) {
+      // Kotlin + Old Architecture: packages.add(AppBlockerPackage())
+      // (no "new" keyword — invalid in Kotlin)
+      const packagesLine = 'packages.add(AppBlockerPackage())'
+      if (!mainApp.includes(packagesLine)) {
         const lastPackageIndex = mainApp.lastIndexOf('packages.add(')
-        const endOfLine = mainApp.indexOf('\n', lastPackageIndex)
-        config.modResults.contents =
-          mainApp.slice(0, endOfLine + 1) +
-          '    ' + packagesLine + '\n' +
-          mainApp.slice(endOfLine + 1)
+        if (lastPackageIndex !== -1) {
+          const endOfLine = mainApp.indexOf('\n', lastPackageIndex)
+          config.modResults.contents =
+            mainApp.slice(0, endOfLine + 1) +
+            '    ' + packagesLine + '\n' +
+            mainApp.slice(endOfLine + 1)
+        }
+      }
+    } else {
+      // Java: packages.add(new AppBlockerPackage());
+      const packagesLine = 'packages.add(new AppBlockerPackage());'
+      if (!mainApp.includes(packagesLine)) {
+        const lastPackageIndex = mainApp.lastIndexOf('packages.add(')
+        if (lastPackageIndex !== -1) {
+          const endOfLine = mainApp.indexOf('\n', lastPackageIndex)
+          config.modResults.contents =
+            mainApp.slice(0, endOfLine + 1) +
+            '    ' + packagesLine + '\n' +
+            mainApp.slice(endOfLine + 1)
+        }
       }
     }
 
