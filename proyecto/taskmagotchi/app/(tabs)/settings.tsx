@@ -18,6 +18,7 @@ import {
   requestAccessibilityService,
 } from '../../src/services/blocking'
 import PetSprite, { AVAILABLE_SKINS } from '../../src/components/petSprite'
+import { useRouter } from 'expo-router'
 import type { MathChallenge, BlockedApp, Schedule, PetMood } from '../../src/types'
 import {
   PixelButton, RetroInputShell, RetroPanel, RetroScreen,
@@ -43,6 +44,7 @@ function DayToggle({ day, active, onToggle }: {
 }
 
 export default function SettingsScreen() {
+  const router = useRouter()
   const { pet, updatePet } = usePetStore()
 
   // ── Existing state ──
@@ -471,6 +473,13 @@ export default function SettingsScreen() {
         <RetroSectionTitle>Datos</RetroSectionTitle>
         <RetroPanel style={styles.card}>
           <PixelButton variant="ghost" onPress={handleResetStreak}>REINICIAR RACHA</PixelButton>
+        </RetroPanel>
+
+        {/* Playground de componentes */}
+        <RetroPanel style={[styles.card, { borderColor: retroColors.accent }]}>
+          <PixelButton onPress={() => router.push('/playground')} variant="ghost">
+            🧪 PLAYGROUND DE COMPONENTES
+          </PixelButton>
         </RetroPanel>
 
         <Text style={styles.version}>TaskMagotchi v1.0.0</Text>

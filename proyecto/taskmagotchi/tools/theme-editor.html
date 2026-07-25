@@ -1,0 +1,2423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎨 TaskMagotchi — Theme Editor</title>
+<style>
+  /* ─── Reset & Base ───────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0f;
+    --surface: #14111f;
+    --surface2: #1d1830;
+    --border: #2a2340;
+    --text: #e8e0f0;
+    --text-muted: #9880b0;
+    --accent: #d86b57;
+    --font-mono: 'Courier New', monospace;
+    --radius: 6px;
+  }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ─── Sidebar ────────────────────────────────────────── */
+  .sidebar {
+    width: 340px;
+    min-width: 340px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sidebar-header h1 { font-size: 14px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1px; }
+  .sidebar-header .badge { font-size: 10px; background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 10px; }
+  .sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  .sidebar-tab {
+    padding: 8px 14px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .sidebar-tab:hover { color: var(--text); }
+  .sidebar-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ─── Controls ───────────────────────────────────────── */
+  .ctrl-group {
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .ctrl-group:last-child { border-bottom: none; margin-bottom: 0; }
+  .ctrl-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .ctrl-label .value {
+    color: var(--text);
+    font-size: 10px;
+    background: var(--surface2);
+    padding: 1px 8px;
+    border-radius: 4px;
+  }
+  .ctrl-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  input[type="color"] {
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    background: none;
+    padding: 2px;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: none; border-radius: 3px; }
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--surface);
+  }
+  input[type="text"], input[type="number"], select {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 8px;
+    border-radius: var(--radius);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    outline: none;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus {
+    border-color: var(--accent);
+  }
+  select { cursor: pointer; }
+  .color-group-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .color-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .color-item input[type="color"] { width: 28px; height: 28px; }
+  .color-item .name {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+  }
+
+  /* ─── Sprite Upload ──────────────────────────────────── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(216,107,87,0.08);
+  }
+  .upload-zone .icon { font-size: 28px; margin-bottom: 6px; }
+  .upload-zone .text { font-size: 11px; color: var(--text-muted); }
+  .upload-zone .sub { font-size: 10px; color: var(--text-muted); margin-top: 4px; opacity: 0.6; }
+  .upload-preview {
+    display: none;
+    margin-top: 8px;
+    padding: 8px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    align-items: center;
+    gap: 10px;
+  }
+  .upload-preview.show { display: flex; }
+  .upload-preview img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .upload-preview .info { flex: 1; font-size: 10px; color: var(--text-muted); }
+  .upload-preview .remove-btn {
+    background: none;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    font-family: var(--font-mono);
+  }
+  .upload-preview .remove-btn:hover { background: var(--accent); color: #fff; }
+
+  /* ─── Actions ────────────────────────────────────────── */
+  .sidebar-actions {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+    text-align: center;
+    min-width: 80px;
+  }
+  .btn:hover { background: var(--border); }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-danger {
+    border-color: #ff6b55;
+    color: #ff6b55;
+  }
+  .btn-danger:hover { background: #ff6b55; color: #fff; }
+
+  /* ─── Preview Panel ──────────────────────────────────── */
+  .preview {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .preview-toolbar {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .preview-toolbar .info { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+  .preview-toolbar .mood-selector { display: flex; gap: 4px; }
+  .mood-btn {
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    transition: all 0.15s;
+  }
+  .mood-btn:hover { color: var(--text); }
+  .mood-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(216,107,87,0.1);
+  }
+  .preview-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    background: var(--preview-bg, #050507);
+  }
+  .preview-section {
+    width: 100%;
+    max-width: 420px;
+  }
+  .preview-section-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    opacity: 0.5;
+    text-align: center;
+  }
+
+  /* ─── Replicated Retro Components (CSS vars driven) ──── */
+  .retro-screen {
+    background: var(--pc-bg, #050507);
+    padding: 16px;
+    border-radius: var(--radius-global, 0);
+    position: relative;
+    overflow: hidden;
+    min-height: 100px;
+  }
+  .retro-screen .orb {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: 0.15;
+    pointer-events: none;
+  }
+  .retro-screen .orb-tl { top: -30px; left: -30px; background: var(--pc-accent, #d86b57); }
+  .retro-screen .orb-tr { top: -30px; right: -30px; background: var(--pc-accent-soft, #6f7cff); }
+  .retro-screen .orb-bl { bottom: -30px; left: -30px; background: var(--pc-accent-soft, #6f7cff); }
+  .retro-screen .orb-br { bottom: -30px; right: -30px; background: var(--pc-accent, #d86b57); }
+
+  .retro-panel {
+    background: var(--pc-panel, #17131f);
+    border: 1px solid var(--pc-border, #f7f0db);
+    border-radius: var(--radius-panel, 6px);
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .retro-section-title {
+    font-family: var(--pc-font, 'Courier New', monospace);
+    font-size: var(--font-heading, 14px);
+    color: var(--pc-text, #fff7e8);
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  /* Buttons */
+  .pixel-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--btn-padding-y, 8px) var(--btn-padding-x, 16px);
+    border: 1px solid var(--pc-border, #f7f0db);
+    background: var(--pc-text, #fff7e8);
+    color: var(--pc-bg, #050507);
+    font-family: var(--pc-font, 'Courier New', monospace);
+    font-size: var(--font-body, 12px);
+    border-radius: var(--radius-btn, 4px);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .pixel-btn:hover { opacity: 0.82; }
+  .pixel-btn.ghost {
+    background: transparent;
+    color: var(--pc-text, #fff7e8);
+  }
+  .pixel-btn.ghost:hover { background: rgba(255,255,255,0.05); }
+  .pixel-btn.danger {
+    border-color: var(--pc-danger, #ff8a78);
+    background: transparent;
+    color: var(--pc-danger, #ff8a78);
+  }
+  .pixel-btn.danger:hover { background: var(--pc-danger, #ff8a78); color: #fff; }
+  .pixel-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Input shell */
+  .retro-input-shell {
+    border: 1px solid var(--pc-border, #f7f0db);
+    border-radius: var(--radius-input, 4px);
+    padding: 2px;
+    background: var(--pc-bg, #050507);
+    margin-bottom: 8px;
+  }
+  .retro-input-shell input, .retro-input-shell textarea {
+    width: 100%;
+    background: var(--pc-bg, #050507);
+    border: none;
+    color: var(--pc-text, #fff7e8);
+    font-family: var(--pc-font, 'Courier New', monospace);
+    font-size: var(--font-body, 12px);
+    padding: 8px;
+    outline: none;
+    border-radius: calc(var(--radius-input, 4px) - 1px);
+  }
+  .retro-input-shell textarea { min-height: 60px; resize: vertical; }
+
+  /* Speech Bubble */
+  .speech-bubble {
+    background: var(--pc-panel, #17131f);
+    border: 1px solid var(--pc-border, #f7f0db);
+    border-radius: var(--radius-panel, 6px);
+    padding: 10px 14px;
+    position: relative;
+    font-family: var(--pc-font, 'Courier New', monospace);
+    font-size: var(--font-body, 12px);
+    color: var(--pc-text, #fff7e8);
+    max-width: 280px;
+  }
+  .speech-bubble .tail {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--pc-panel, #17131f);
+    border: 1px solid var(--pc-border, #f7f0db);
+    transform: rotate(45deg);
+    bottom: -6px;
+    left: 24px;
+    border-top: none;
+    border-left: none;
+  }
+
+  /* ─── Sprite ─────────────────────────────────────────── */
+  .sprite-stage {
+    position: relative;
+    width: 120px;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .sprite-glow {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: var(--sprite-glow, rgba(216,107,87,0.15));
+    filter: blur(20px);
+    top: 10px;
+    left: 10px;
+  }
+  .sprite-shadow {
+    position: absolute;
+    width: 80px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--sprite-shadow, rgba(0,0,0,0.3));
+    bottom: 0;
+    left: 20px;
+  }
+  .sprite-body {
+    position: relative;
+    width: 70px;
+    height: 80px;
+    background: var(--sprite-body, #d4a373);
+    border-radius: 35px 35px 20px 20px;
+    margin-top: 20px;
+  }
+  .sprite-ear {
+    position: absolute;
+    width: 18px;
+    height: 26px;
+    background: var(--sprite-ear, #b88352);
+    border-radius: 50% 50% 30% 30%;
+    top: -8px;
+  }
+  .sprite-ear.left { left: -6px; transform: rotate(-15deg); }
+  .sprite-ear.right { right: -6px; transform: rotate(15deg); }
+  .sprite-head {
+    position: absolute;
+    width: 56px;
+    height: 46px;
+    background: var(--sprite-head, #d4a373);
+    border-radius: 50%;
+    top: -20px;
+    left: 7px;
+  }
+  .sprite-eye {
+    position: absolute;
+    width: 8px;
+    height: 10px;
+    background: var(--sprite-eye, #2d1b0e);
+    border-radius: 50%;
+    top: 14px;
+  }
+  .sprite-eye.left { left: 13px; }
+  .sprite-eye.right { right: 13px; }
+  .sprite-mouth {
+    position: absolute;
+    width: 14px;
+    height: 6px;
+    border-bottom: 2px solid var(--sprite-mouth, #2d1b0e);
+    border-radius: 0 0 10px 10px;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .sprite-mouth.sad {
+    border-bottom: none;
+    border-top: 2px solid var(--sprite-mouth, #2d1b0e);
+    border-radius: 10px 10px 0 0;
+    width: 10px;
+  }
+  .sprite-mouth.angry {
+    width: 10px;
+    height: 4px;
+    border-radius: 0;
+    border-bottom: 2px solid var(--sprite-mouth, #2d1b0e);
+  }
+
+  /* Uploaded sprite overlay */
+  .sprite-custom-img {
+    display: none;
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    top: 10px;
+    left: 10px;
+    pointer-events: none;
+  }
+  .sprite-custom-img.show { display: block; }
+  .sprite-custom-img.show ~ .sprite-body,
+  .sprite-custom-img.show ~ .sprite-body * { display: none; }
+
+  /* ─── Mood Popup ─────────────────────────────────────── */
+  .mood-popup {
+    padding: 16px;
+    border-radius: var(--radius-panel, 6px);
+    background: var(--pc-panel, #17131f);
+    border: 1px solid var(--pc-border, #f7f0db);
+    text-align: center;
+    max-width: 280px;
+  }
+  .mood-popup .title {
+    font-family: var(--pc-font, 'Courier New', monospace);
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .mood-popup .message {
+    font-family: var(--pc-font, 'Courier New', monospace);
+    font-size: 11px;
+    color: var(--pc-muted, #c6bca7);
+  }
+  .mood-popup.happy .title { color: var(--pc-success, #88e38b); }
+  .mood-popup.normal .title { color: var(--pc-text, #fff7e8); }
+  .mood-popup.sad .title { color: #7ba3f0; }
+  .mood-popup.angry .title { color: var(--pc-danger, #ff8a78); }
+
+  /* ─── Stretch Mode ─────────────────────────────────────── */
+  .stretch-enabled .preview-section {
+    position: relative;
+    resize: both;
+    overflow: hidden;
+    min-width: 100px;
+    min-height: 60px;
+    border: 1px dashed transparent;
+    transition: border-color 0.2s;
+    padding: 8px;
+  }
+  .stretch-enabled .preview-section:hover {
+    border-color: rgba(216,107,87,0.3);
+  }
+  .stretch-enabled .preview-section::after {
+    content: '⤡';
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 12px;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .stretch-enabled .preview-section:hover::after {
+    opacity: 0.6;
+  }
+  .stretch-enabled .preview-section .preview-section-title {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--preview-bg, #050507);
+    padding-bottom: 4px;
+  }
+  .stretch-size-indicator {
+    display: none;
+    position: absolute;
+    top: 2px;
+    right: 28px;
+    font-size: 9px;
+    font-family: var(--font-mono);
+    color: var(--accent);
+    background: rgba(0,0,0,0.7);
+    padding: 1px 6px;
+    border-radius: 3px;
+    pointer-events: none;
+    z-index: 3;
+  }
+  .stretch-enabled .preview-section:hover .stretch-size-indicator {
+    display: block;
+  }
+
+  /* ─── Responsive Views ─────────────────────────────────── */
+  .resp-btn {
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    transition: all 0.15s;
+  }
+  .resp-btn:hover { color: var(--text); background: var(--surface2); }
+  .resp-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(216,107,87,0.1); }
+
+  /* ─── Contrast Analyzer ────────────────────────────────── */
+  .contrast-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .contrast-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    background: var(--surface2);
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+  }
+  .contrast-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.1);
+    flex-shrink: 0;
+  }
+  .contrast-badge {
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  .contrast-badge.AAA { background: #22c55e; color: #000; }
+  .contrast-badge.AA  { background: #eab308; color: #000; }
+  .contrast-badge.FAIL { background: #ef4444; color: #fff; }
+
+  /* ─── Theme Manager ────────────────────────────────────── */
+  .theme-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .theme-list-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .theme-list-item .name { flex: 1; font-size: 11px; font-family: var(--font-mono); color: var(--text); }
+  .theme-list-item .mini-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 2px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 9px;
+    font-family: var(--font-mono);
+  }
+  .theme-list-item .mini-btn:hover { color: var(--text); border-color: var(--accent); }
+  .theme-list-item .mini-btn.del:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ─── Screenshot Button ────────────────────────────────── */
+  #screenshotCanvas { display: none; }
+
+  /* ─── Undo/Redo indicator ──────────────────────────────── */
+  .undo-status {
+    font-size: 9px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    margin-top: 4px;
+  }
+
+  /* ─── Component Showcase Layout ──────────────────────── */
+  .showcase-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .showcase-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ─── Toast ──────────────────────────────────────────── */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    font-size: 12px;
+    color: var(--text);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    z-index: 1000;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* ─── Responsive ─────────────────────────────────────── */
+  @media (max-width: 768px) {
+    body { flex-direction: column; }
+    .sidebar { width: 100%; min-width: auto; height: 50vh; border-right: none; border-bottom: 1px solid var(--border); }
+    .preview { height: 50vh; }
+  }
+
+  /* ─── JSON Modal ─────────────────────────────────────── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 500;
+    justify-content: center;
+    align-items: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-content h2 { font-size: 14px; font-family: var(--font-mono); margin-bottom: 10px; }
+  .modal-content textarea {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 10px;
+    border-radius: var(--radius);
+    resize: vertical;
+    min-height: 200px;
+    outline: none;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════ SIDEBAR ════ -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>🎨 Theme Editor</h1>
+    <span class="badge">v1.0</span>
+  </div>
+
+  <div class="sidebar-tabs">
+    <div class="sidebar-tab active" data-tab="colors">Colores</div>
+    <div class="sidebar-tab" data-tab="typography">Tipografía</div>
+    <div class="sidebar-tab" data-tab="components">Componentes</div>
+    <div class="sidebar-tab" data-tab="sprite">Sprite</div>
+    <div class="sidebar-tab" data-tab="layout">Layout</div>
+    <div class="sidebar-tab" data-tab="content">Contenido</div>
+    <div class="sidebar-tab" data-tab="tools">🔧 Tools</div>
+  </div>
+
+  <div class="sidebar-content" id="sidebarContent">
+    <!-- ── TAB: Colores ────────────────────────────── -->
+    <div class="tab-panel active" id="tab-colors">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Colores base</div>
+        <div class="color-group-grid">
+          <div class="color-item">
+            <input type="color" id="c-background" value="#050507">
+            <span class="name">background</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="c-panel" value="#17131f">
+            <span class="name">panel</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="c-panelSoft" value="#221b2e">
+            <span class="name">panelSoft</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="c-panelMuted" value="#120f18">
+            <span class="name">panelMuted</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="c-border" value="#f7f0db">
+            <span class="name">border</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="c-borderSoft" value="#8f8571">
+            <span class="name">borderSoft</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="c-text" value="#fff7e8">
+            <span class="name">text</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="c-muted" value="#c6bca7">
+            <span class="name">muted</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="c-accent" value="#d86b57">
+            <span class="name">accent</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="c-accentSoft" value="#6f7cff">
+            <span class="name">accentSoft</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="c-success" value="#88e38b">
+            <span class="name">success</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="c-danger" value="#ff8a78">
+            <span class="name">danger</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: Tipografía ──────────────────────────── -->
+    <div class="tab-panel" id="tab-typography">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Fuente mono</div>
+        <select id="font-family">
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="'Menlo', monospace">Menlo (iOS)</option>
+          <option value="monospace">monospace</option>
+          <option value="'Fira Code', monospace">Fira Code</option>
+          <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+          <option value="'SF Mono', monospace">SF Mono</option>
+          <option value="'Cascadia Code', monospace">Cascadia Code</option>
+          <option value="'IBM Plex Mono', monospace">IBM Plex Mono</option>
+        </select>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          <span>Tamaño títulos</span>
+          <span class="value" id="font-heading-val">16</span>
+        </div>
+        <input type="range" id="font-heading" min="10" max="28" value="16" step="1">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          <span>Tamaño cuerpo</span>
+          <span class="value" id="font-body-val">12</span>
+        </div>
+        <input type="range" id="font-body" min="8" max="20" value="12" step="1">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          <span>Tamaño pequeño</span>
+          <span class="value" id="font-small-val">10</span>
+        </div>
+        <input type="range" id="font-small" min="6" max="16" value="10" step="1">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          <span>Letter Spacing</span>
+          <span class="value" id="letter-spacing-val">1</span>
+        </div>
+        <input type="range" id="letter-spacing" min="0" max="6" value="1" step="0.5">
+      </div>
+    </div>
+
+    <!-- ── TAB: Componentes ─────────────────────────── -->
+    <div class="tab-panel" id="tab-components">
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          <span>Border radius general</span>
+          <span class="value" id="radius-global-val">0</span>
+        </div>
+        <input type="range" id="radius-global" min="0" max="20" value="0" step="1">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          <span>Radius paneles</span>
+          <span class="value" id="radius-panel-val">6</span>
+        </div>
+        <input type="range" id="radius-panel" min="0" max="20" value="6" step="1">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          <span>Radius botones</span>
+          <span class="value" id="radius-btn-val">4</span>
+        </div>
+        <input type="range" id="radius-btn" min="0" max="20" value="4" step="1">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          <span>Radius inputs</span>
+          <span class="value" id="radius-input-val">4</span>
+        </div>
+        <input type="range" id="radius-input" min="0" max="20" value="4" step="1">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          <span>Padding botones (X)</span>
+          <span class="value" id="btn-padding-x-val">16</span>
+        </div>
+        <input type="range" id="btn-padding-x" min="4" max="40" value="16" step="2">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          <span>Padding botones (Y)</span>
+          <span class="value" id="btn-padding-y-val">8</span>
+        </div>
+        <input type="range" id="btn-padding-y" min="2" max="24" value="8" step="2">
+      </div>
+      <div class="ctrl-group noborder">
+        <div class="ctrl-label">
+          <span>Opacidad decoraciones</span>
+          <span class="value" id="orb-opacity-val">0.15</span>
+        </div>
+        <input type="range" id="orb-opacity" min="0" max="0.5" value="0.15" step="0.01">
+      </div>
+    </div>
+
+    <!-- ── TAB: Layout ──────────────────────────────── -->
+    <div class="tab-panel" id="tab-layout">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Espaciado entre secciones</div>
+        <div class="ctrl-label">
+          <span>Gap vertical</span>
+          <span class="value" id="layout-gap-val">20</span>
+        </div>
+        <input type="range" id="layout-gap" min="0" max="60" value="20" step="2">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Alineación del contenido</div>
+        <div style="display:flex;gap:4px">
+          <button class="layout-align-btn active" data-align="flex-start" style="flex:1;padding:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--font-mono)">⬅ Izq</button>
+          <button class="layout-align-btn" data-align="center" style="flex:1;padding:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--font-mono)">⬇ Centro</button>
+          <button class="layout-align-btn" data-align="flex-end" style="flex:1;padding:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--font-mono)">➡ Der</button>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Padding interior preview</div>
+        <div class="ctrl-label">
+          <span>Padding</span>
+          <span class="value" id="preview-padding-val">24</span>
+        </div>
+        <input type="range" id="preview-padding" min="0" max="60" value="24" step="2">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label" style="margin-bottom:6px">✋ Stretch Mode</div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">
+          <input type="checkbox" id="stretchToggle" style="accent-color:var(--accent);width:16px;height:16px">
+          <span style="flex:1;font-size:11px;font-family:var(--font-mono);color:var(--text)">Agarrá las esquinas para estirar</span>
+          <span style="font-size:18px">⤡</span>
+        </label>
+        <p style="font-size:9px;color:var(--text-muted);margin-top:4px;opacity:0.6">Estirá los componentes arrastrando desde la esquina inferior derecha</p>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Secciones visibles y orden</div>
+        <div id="layoutSectionList" style="display:flex;flex-direction:column;gap:6px;margin-top:6px"></div>
+        <p style="font-size:9px;color:var(--text-muted);margin-top:6px;opacity:0.6">Usá los botones ◄ ► para reordenar</p>
+      </div>
+      <div class="ctrl-group noborder">
+        <div class="ctrl-label">Resetear layout</div>
+        <button class="btn" id="resetLayoutBtn" style="width:100%;margin-top:4px">↺ Restaurar default</button>
+      </div>
+    </div>
+
+    <!-- ── TAB: Contenido ──────────────────────────── -->
+    <div class="tab-panel" id="tab-content">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Textos del preview</div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Título del panel</div>
+        <input type="text" id="ct-panel-title" value="📋 Panel de ejemplo">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Botón Solid</div>
+        <input type="text" id="ct-btn-solid" value="Solid">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Botón Ghost</div>
+        <input type="text" id="ct-btn-ghost" value="Ghost">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Botón Danger</div>
+        <input type="text" id="ct-btn-danger" value="Peligro">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Botón Disabled</div>
+        <input type="text" id="ct-btn-disabled" value="Disabled">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Placeholder input</div>
+        <input type="text" id="ct-input-placeholder" value="Escribe algo...">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Texto input</div>
+        <input type="text" id="ct-input-text" value="Texto de ejemplo">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Placeholder textarea</div>
+        <input type="text" id="ct-textarea-placeholder" value="Área de texto...">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Texto textarea</div>
+        <textarea id="ct-textarea-text" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:6px;border-radius:4px;outline:none;resize:vertical;min-height:40px">Esto es un texto
+multilínea de ejemplo</textarea>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Burbuja de diálogo</div>
+        <textarea id="ct-bubble-text" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:6px;border-radius:4px;outline:none;resize:vertical;min-height:40px">¡Hola! Soy tu mascota y estoy aquí para ayudarte con tus tareas.</textarea>
+      </div>
+      <div class="ctrl-group noborder">
+        <div class="ctrl-label">Título pantalla completa</div>
+        <input type="text" id="ct-screen-title" value="TITLE">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Subtítulo pantalla</div>
+        <input type="text" id="ct-screen-subtitle" value="subtítulo ejemplo">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Texto botón acción</div>
+        <input type="text" id="ct-screen-action" value="ACCIÓN">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Título tarea destacada</div>
+        <input type="text" id="ct-task-title" value="📌 Tarea destacada">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Descripción tarea</div>
+        <input type="text" id="ct-task-desc" value="Completar el diseño del theme editor">
+      </div>
+      <div class="ctrl-group noborder">
+        <div class="ctrl-label">Estado tarea</div>
+        <input type="text" id="ct-task-status" value="● COMPLETADA">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">XP tarea</div>
+        <input type="text" id="ct-task-xp" value="+50 XP">
+      </div>
+    </div>
+    <div class="tab-panel" id="tab-sprite">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Upload sprite personalizado</div>
+        <div class="upload-zone" id="uploadZone">
+          <div class="icon">🖼️</div>
+          <div class="text">Arrastra una imagen o haz click</div>
+          <div class="sub">PNG / GIF / SVG — con transparencia</div>
+          <input type="file" id="fileInput" accept="image/png,image/gif,image/svg+xml,image/webp" style="display:none">
+        </div>
+        <div class="upload-preview" id="uploadPreview">
+          <img id="previewImg" src="" alt="sprite">
+          <div class="info">
+            <div id="fileName">sprite.png</div>
+            <div id="fileSize">0 KB</div>
+          </div>
+          <button class="remove-btn" id="removeSprite">×</button>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Colores del sprite</div>
+        <div class="color-group-grid">
+          <div class="color-item">
+            <input type="color" id="s-body" value="#d4a373">
+            <span class="name">cuerpo</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="s-head" value="#d4a373">
+            <span class="name">cabeza</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="s-ear" value="#b88352">
+            <span class="name">orejas</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="s-eye" value="#2d1b0e">
+            <span class="name">ojos</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="s-mouth" value="#2d1b0e">
+            <span class="name">boca</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="s-glow" value="#d86b57">
+            <span class="name">glow</span>
+          </div>
+          <div class="color-item">
+            <input type="color" id="s-shadow" value="#000000">
+            <span class="name">sombra</span>
+          </div>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Tamaño sprite</div>
+        <div class="ctrl-label">
+          <span>Escala</span>
+          <span class="value" id="sprite-scale-val">1.0</span>
+        </div>
+        <input type="range" id="sprite-scale" min="0.5" max="3" value="1" step="0.1">
+      </div>
+      <div class="ctrl-group noborder">
+        <div class="ctrl-label">Expresión por defecto</div>
+        <select id="sprite-expression">
+          <option value="neutral">😐 Neutral</option>
+          <option value="happy">😊 Feliz</option>
+          <option value="sad">😢 Triste</option>
+          <option value="angry">😠 Enojado</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar-actions">
+    <button class="btn btn-primary" id="exportBtn">📤 Exportar JSON</button>
+    <button class="btn" id="importBtn">📥 Importar</button>
+    <button class="btn btn-danger" id="resetBtn">↺ Reset</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ PREVIEW ════ -->
+<div class="preview">
+  <div class="preview-toolbar">
+    <span class="info" id="themeInfo">🎨 Editor visual — theme + layout + contenido</span>
+    <div style="display:flex;align-items:center;gap:6px">
+      <div class="resp-selector" style="display:flex;gap:2px">
+        <button class="resp-btn active" data-width="-1" title="Auto">↔</button>
+        <button class="resp-btn" data-width="375" title="375px">📱</button>
+        <button class="resp-btn" data-width="768" title="768px">📱</button>
+        <button class="resp-btn" data-width="1024" title="1024px">💻</button>
+        <button class="resp-btn" data-width="1280" title="1280px">🖥️</button>
+      </div>
+      <div class="mood-selector">
+        <button class="mood-btn" data-mood="happy">😊</button>
+        <button class="mood-btn active" data-mood="normal">😐</button>
+        <button class="mood-btn" data-mood="sad">😢</button>
+        <button class="mood-btn" data-mood="angry">😠</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="preview-area" id="previewArea">
+    <!-- Las secciones se renderizan dinámicamente desde JS -->
+    <div id="previewSectionsContainer" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:20px">
+      <!-- Sprite -->
+      <div class="preview-section showcase-center" data-section-id="sprite" id="section-sprite" style="width:100%;max-width:420px">
+        <span class="stretch-size-indicator" id="size-indicator-sprite">420 × 200</span>
+        <div class="preview-section-title">Mascota</div>
+        <div class="sprite-stage" id="spriteStage">
+          <div class="sprite-glow"></div>
+          <div class="sprite-shadow"></div>
+          <img class="sprite-custom-img" id="customSpriteImg" src="" alt="custom sprite">
+          <div class="sprite-body">
+            <div class="sprite-ear left"></div>
+            <div class="sprite-ear right"></div>
+            <div class="sprite-head">
+              <div class="sprite-eye left"></div>
+              <div class="sprite-eye right"></div>
+              <div class="sprite-mouth" id="spriteMouth"></div>
+            </div>
+          </div>
+        </div>
+        <div class="mood-popup normal" id="moodPopup">
+          <div class="title" id="moodTitle">✨ NORMAL</div>
+          <div class="message" id="moodMsg">Tus tareas van bien, sigue así</div>
+        </div>
+      </div>
+
+      <!-- Panel + Buttons -->
+      <div class="preview-section" data-section-id="panels" id="section-panels" style="width:100%;max-width:420px">
+        <span class="stretch-size-indicator" id="size-indicator-panels">420 × 300</span>
+        <div class="preview-section-title">Paneles y botones</div>
+        <div class="retro-panel">
+          <div class="retro-section-title" id="ct-panel-title-display">📋 Panel de ejemplo</div>
+          <div class="showcase-row">
+            <button class="pixel-btn" id="ct-btn-solid-display">Solid</button>
+            <button class="pixel-btn ghost" id="ct-btn-ghost-display">Ghost</button>
+            <button class="pixel-btn danger" id="ct-btn-danger-display">Peligro</button>
+            <button class="pixel-btn disabled" id="ct-btn-disabled-display">Disabled</button>
+          </div>
+          <div class="retro-input-shell">
+            <input type="text" id="ct-input-display" placeholder="Escribe algo..." value="Texto de ejemplo">
+          </div>
+          <div class="retro-input-shell">
+            <textarea id="ct-textarea-display" placeholder="Área de texto...">Esto es un texto
+multilínea de ejemplo</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Speech bubble -->
+      <div class="preview-section" data-section-id="bubble" id="section-bubble" style="width:100%;max-width:420px">
+        <span class="stretch-size-indicator" id="size-indicator-bubble">420 × 120</span>
+        <div class="preview-section-title">Burbuja de diálogo</div>
+        <div class="speech-bubble" id="ct-bubble-display">
+          ¡Hola! Soy tu mascota y estoy aquí para ayudarte con tus tareas.
+          <div class="tail"></div>
+        </div>
+      </div>
+
+      <!-- Full screen preview -->
+      <div class="preview-section" data-section-id="fullscreen" id="section-fullscreen" style="width:100%;max-width:420px">
+        <span class="stretch-size-indicator" id="size-indicator-fullscreen">420 × 280</span>
+        <div class="preview-section-title">Pantalla completa</div>
+        <div class="retro-screen" id="retroScreenPreview">
+          <div class="orb orb-tl"></div>
+          <div class="orb orb-tr"></div>
+          <div class="orb orb-bl"></div>
+          <div class="orb orb-br"></div>
+          <div style="position:relative;z-index:1">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div>
+                <div id="ct-screen-title-display" style="font-family:var(--pc-font);font-size:var(--font-heading);color:var(--pc-text);font-weight:800;letter-spacing:2px">TITLE</div>
+                <div id="ct-screen-subtitle-display" style="font-family:var(--pc-font);font-size:var(--font-small);color:var(--pc-muted);letter-spacing:1.2px">subtítulo ejemplo</div>
+              </div>
+              <button class="pixel-btn" id="ct-screen-action-display" style="font-size:var(--font-small);padding:4px 12px">ACCIÓN</button>
+            </div>
+            <div class="retro-panel" style="margin-bottom:0">
+              <div class="retro-section-title" id="ct-task-title-display">📌 Tarea destacada</div>
+              <div id="ct-task-desc-display" style="font-family:var(--pc-font);font-size:var(--font-body);color:var(--pc-muted);margin-bottom:10px">
+                Completar el diseño del theme editor
+              </div>
+              <div style="display:flex;gap:6px">
+                <span id="ct-task-status-display" style="font-family:var(--pc-font);font-size:10px;background:var(--pc-success);color:#000;padding:2px 8px;border-radius:4px">● COMPLETADA</span>
+                <span id="ct-task-xp-display" style="font-family:var(--pc-font);font-size:10px;color:var(--pc-muted)">+50 XP</span>
+      </div>
+    </div>
+
+    <!-- ── TAB: Tools ──────────────────────────────── -->
+    <div class="tab-panel" id="tab-tools">
+      <!-- 📸 Screenshot -->
+      <div class="ctrl-group">
+        <div class="ctrl-label">📸 Screenshot del preview</div>
+        <button class="btn" id="screenshotBtn" style="width:100%;margin-top:4px">📸 Capturar preview como imagen</button>
+        <canvas id="screenshotCanvas"></canvas>
+      </div>
+
+      <!-- 🌓 Light/Dark -->
+      <div class="ctrl-group">
+        <div class="ctrl-label">🌓 Vista Previa</div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">
+          <input type="checkbox" id="lightToggle" style="accent-color:var(--accent);width:16px;height:16px">
+          <span style="flex:1;font-size:11px;font-family:var(--font-mono);color:var(--text)">Modo claro</span>
+          <span id="lightModeIcon" style="font-size:16px">🌙</span>
+        </label>
+      </div>
+
+      <!-- 📱 Responsive -->
+      <div class="ctrl-group">
+        <div class="ctrl-label">📱 Vistas responsive</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="resp-btn active" data-width="-1">Auto</button>
+          <button class="resp-btn" data-width="375">📱 375</button>
+          <button class="resp-btn" data-width="600">📱 600</button>
+          <button class="resp-btn" data-width="768">📱 768</button>
+          <button class="resp-btn" data-width="1024">💻 1024</button>
+          <button class="resp-btn" data-width="1280">🖥️ 1280</button>
+        </div>
+      </div>
+
+      <!-- 🎨 Contraste -->
+      <div class="ctrl-group">
+        <div class="ctrl-label">🎨 Analizador de contraste</div>
+        <p style="font-size:9px;color:var(--text-muted);margin-bottom:4px;opacity:0.7">Ratio de contraste entre colores del tema</p>
+        <div class="contrast-grid" id="contrastGrid"></div>
+      </div>
+
+      <!-- 📦 Temas -->
+      <div class="ctrl-group noborder">
+        <div class="ctrl-label">📦 Gestor de temas</div>
+        <div style="display:flex;gap:4px;margin-top:4px">
+          <input type="text" id="themeNameInput" placeholder="nombre del tema..." style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:10px;font-family:var(--font-mono);outline:none">
+          <button class="btn" id="saveThemeBtn" style="flex:0;padding:4px 12px;font-size:10px;white-space:nowrap">💾 Guardar</button>
+        </div>
+        <div class="theme-list" id="themeList"></div>
+        <p class="undo-status" id="undoStatus">No hay cambios para deshacer</p>
+      </div>
+    </div>
+  </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════ MODAL ════ -->
+<div class="modal-overlay" id="jsonModal">
+  <div class="modal-content">
+    <h2 id="modalTitle">📤 Exportar Tema</h2>
+    <textarea id="jsonOutput" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="copyBtn">📋 Copiar</button>
+      <button class="btn" id="applyImportBtn" style="display:none">✓ Aplicar tema</button>
+      <button class="btn" id="closeModalBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// 1. DEFAULTS
+// ════════════════════════════════════════════════════════════
+const DEFAULTS = {
+  colors: {
+    background: '#050507', panel: '#17131f', panelSoft: '#221b2e', panelMuted: '#120f18',
+    border: '#f7f0db', borderSoft: '#8f8571', text: '#fff7e8', muted: '#c6bca7',
+    accent: '#d86b57', accentSoft: '#6f7cff', success: '#88e38b', danger: '#ff8a78',
+  },
+  typography: { fontFamily: "'Courier New', monospace", heading: 16, body: 12, small: 10, letterSpacing: 1 },
+  components: { radiusGlobal: 0, radiusPanel: 6, radiusBtn: 4, radiusInput: 4, btnPaddingX: 16, btnPaddingY: 8, orbOpacity: 0.15 },
+  sprite: {
+    body: '#d4a373', head: '#d4a373', ear: '#b88352', eye: '#2d1b0e', mouth: '#2d1b0e',
+    glow: '#d86b57', shadow: '#000000', scale: 1, expression: 'neutral', customImage: null,
+  },
+};
+let currentTheme = JSON.parse(JSON.stringify(DEFAULTS));
+let activeMood = 'normal';
+let customSpriteDataURL = null;
+
+// ════════════════════════════════════════════════════════════
+// 2. DOM REFS
+// ════════════════════════════════════════════════════════════
+const colorInputs = {
+  background: document.getElementById('c-background'),
+  panel: document.getElementById('c-panel'),
+  panelSoft: document.getElementById('c-panelSoft'),
+  panelMuted: document.getElementById('c-panelMuted'),
+  border: document.getElementById('c-border'),
+  borderSoft: document.getElementById('c-borderSoft'),
+  text: document.getElementById('c-text'),
+  muted: document.getElementById('c-muted'),
+  accent: document.getElementById('c-accent'),
+  accentSoft: document.getElementById('c-accentSoft'),
+  success: document.getElementById('c-success'),
+  danger: document.getElementById('c-danger'),
+};
+const fontFamily = document.getElementById('font-family');
+const fontHeading = document.getElementById('font-heading');
+const fontBody = document.getElementById('font-body');
+const fontSmall = document.getElementById('font-small');
+const letterSpacing = document.getElementById('letter-spacing');
+const rGlobal = document.getElementById('radius-global');
+const rPanel = document.getElementById('radius-panel');
+const rBtn = document.getElementById('radius-btn');
+const rInput = document.getElementById('radius-input');
+const btnPadX = document.getElementById('btn-padding-x');
+const btnPadY = document.getElementById('btn-padding-y');
+const orbOp = document.getElementById('orb-opacity');
+const sBody = document.getElementById('s-body');
+const sHead = document.getElementById('s-head');
+const sEar = document.getElementById('s-ear');
+const sEye = document.getElementById('s-eye');
+const sMouth = document.getElementById('s-mouth');
+const sGlow = document.getElementById('s-glow');
+const sShadow = document.getElementById('s-shadow');
+const spriteScale = document.getElementById('sprite-scale');
+const spriteExpr = document.getElementById('sprite-expression');
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const uploadPreview = document.getElementById('uploadPreview');
+const previewImg = document.getElementById('previewImg');
+const fileName = document.getElementById('fileName');
+const fileSize = document.getElementById('fileSize');
+const removeSpriteBtn = document.getElementById('removeSprite');
+const customSpriteImg = document.getElementById('customSpriteImg');
+
+// ════════════════════════════════════════════════════════════
+// 3. APPLY THEME
+// ════════════════════════════════════════════════════════════
+function applyTheme() {
+  const t = currentTheme;
+  const root = document.documentElement;
+
+  // Colors
+  root.style.setProperty('--pc-bg', t.colors.background);
+  root.style.setProperty('--pc-panel', t.colors.panel);
+  root.style.setProperty('--pc-border', t.colors.border);
+  root.style.setProperty('--pc-border-soft', t.colors.borderSoft);
+  root.style.setProperty('--pc-text', t.colors.text);
+  root.style.setProperty('--pc-muted', t.colors.muted);
+  root.style.setProperty('--pc-accent', t.colors.accent);
+  root.style.setProperty('--pc-accent-soft', t.colors.accentSoft);
+  root.style.setProperty('--pc-success', t.colors.success);
+  root.style.setProperty('--pc-danger', t.colors.danger);
+  document.getElementById('previewArea').style.setProperty('--preview-bg', t.colors.background);
+
+  // Typography
+  root.style.setProperty('--pc-font', t.typography.fontFamily);
+  root.style.setProperty('--font-heading', t.typography.heading + 'px');
+  root.style.setProperty('--font-body', t.typography.body + 'px');
+  root.style.setProperty('--font-small', t.typography.small + 'px');
+  root.style.setProperty('--letter-spacing', t.typography.letterSpacing + 'px');
+
+  // Components
+  root.style.setProperty('--radius-global', t.components.radiusGlobal + 'px');
+  root.style.setProperty('--radius-panel', t.components.radiusPanel + 'px');
+  root.style.setProperty('--radius-btn', t.components.radiusBtn + 'px');
+  root.style.setProperty('--radius-input', t.components.radiusInput + 'px');
+  root.style.setProperty('--btn-padding-x', t.components.btnPaddingX + 'px');
+  root.style.setProperty('--btn-padding-y', t.components.btnPaddingY + 'px');
+  const orbs = document.querySelectorAll('.retro-screen .orb');
+  orbs.forEach(o => o.style.opacity = t.components.orbOpacity);
+
+  // Sprite colors
+  root.style.setProperty('--sprite-body', t.sprite.body);
+  root.style.setProperty('--sprite-head', t.sprite.head);
+  root.style.setProperty('--sprite-ear', t.sprite.ear);
+  root.style.setProperty('--sprite-eye', t.sprite.eye);
+  root.style.setProperty('--sprite-mouth', t.sprite.mouth);
+  root.style.setProperty('--sprite-glow', hexToRgba(t.sprite.glow, 0.15));
+  root.style.setProperty('--sprite-shadow', hexToRgba(t.sprite.shadow, 0.3));
+
+  // Sprite scale
+  const stage = document.getElementById('spriteStage');
+  stage.style.transform = `scale(${t.sprite.scale})`;
+  stage.style.transformOrigin = 'center center';
+
+  // Sprite expression
+  updateMouth(t.sprite.expression);
+
+  // Custom sprite image
+  if (t.sprite.customImage) {
+    customSpriteImg.src = t.sprite.customImage;
+    customSpriteImg.classList.add('show');
+  } else {
+    customSpriteImg.classList.remove('show');
+    customSpriteImg.src = '';
+  }
+
+  // Update mood popup
+  updateMoodPopup(activeMood);
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function updateMouth(expr) {
+  const mouth = document.getElementById('spriteMouth');
+  mouth.className = 'sprite-mouth';
+  if (expr === 'sad') mouth.classList.add('sad');
+  else if (expr === 'angry') mouth.classList.add('angry');
+}
+
+// ════════════════════════════════════════════════════════════
+// 4. SYNC UI → THEME
+// ════════════════════════════════════════════════════════════
+function syncColorsToTheme() {
+  for (const [key, el] of Object.entries(colorInputs)) {
+    currentTheme.colors[key] = el.value;
+  }
+}
+function syncTypographyToTheme() {
+  currentTheme.typography.fontFamily = fontFamily.value;
+  currentTheme.typography.heading = +fontHeading.value;
+  currentTheme.typography.body = +fontBody.value;
+  currentTheme.typography.small = +fontSmall.value;
+  currentTheme.typography.letterSpacing = +letterSpacing.value;
+}
+function syncComponentsToTheme() {
+  currentTheme.components.radiusGlobal = +rGlobal.value;
+  currentTheme.components.radiusPanel = +rPanel.value;
+  currentTheme.components.radiusBtn = +rBtn.value;
+  currentTheme.components.radiusInput = +rInput.value;
+  currentTheme.components.btnPaddingX = +btnPadX.value;
+  currentTheme.components.btnPaddingY = +btnPadY.value;
+  currentTheme.components.orbOpacity = +orbOp.value;
+}
+function syncSpriteToTheme() {
+  currentTheme.sprite.body = sBody.value;
+  currentTheme.sprite.head = sHead.value;
+  currentTheme.sprite.ear = sEar.value;
+  currentTheme.sprite.eye = sEye.value;
+  currentTheme.sprite.mouth = sMouth.value;
+  currentTheme.sprite.glow = sGlow.value;
+  currentTheme.sprite.shadow = sShadow.value;
+  currentTheme.sprite.scale = +spriteScale.value;
+  currentTheme.sprite.expression = spriteExpr.value;
+}
+
+function fullSyncAndApply() {
+  syncColorsToTheme();
+  syncTypographyToTheme();
+  syncComponentsToTheme();
+  syncSpriteToTheme();
+  updateValueLabels();
+  applyTheme();
+  updateMoodPopup(activeMood);
+}
+
+// ════════════════════════════════════════════════════════════
+// 5. VALUE LABELS
+// ════════════════════════════════════════════════════════════
+function updateValueLabels() {
+  document.getElementById('font-heading-val').textContent = fontHeading.value;
+  document.getElementById('font-body-val').textContent = fontBody.value;
+  document.getElementById('font-small-val').textContent = fontSmall.value;
+  document.getElementById('letter-spacing-val').textContent = letterSpacing.value;
+  document.getElementById('radius-global-val').textContent = rGlobal.value;
+  document.getElementById('radius-panel-val').textContent = rPanel.value;
+  document.getElementById('radius-btn-val').textContent = rBtn.value;
+  document.getElementById('radius-input-val').textContent = rInput.value;
+  document.getElementById('btn-padding-x-val').textContent = btnPadX.value;
+  document.getElementById('btn-padding-y-val').textContent = btnPadY.value;
+  document.getElementById('orb-opacity-val').textContent = orbOp.value;
+  document.getElementById('sprite-scale-val').textContent = spriteScale.value;
+}
+
+// ════════════════════════════════════════════════════════════
+// 6. MOOD POPUP
+// ════════════════════════════════════════════════════════════
+const MOOD_DATA = {
+  happy: { title: '✨ FELIZ', msg: '¡Vas excelente! Sigue completando tareas', color: '#88e38b' },
+  normal: { title: '✨ NORMAL', msg: 'Tus tareas van bien, sigue así', color: '#fff7e8' },
+  sad: { title: '💧 TRISTE', msg: 'Ánimo, empieza con una tarea pequeña', color: '#7ba3f0' },
+  angry: { title: '🔥 ENOJADO', msg: '¡Hay tareas vencidas! Ordena tus prioridades', color: '#ff8a78' },
+};
+
+function updateMoodPopup(mood) {
+  const data = MOOD_DATA[mood] || MOOD_DATA.normal;
+  const popup = document.getElementById('moodPopup');
+  popup.className = 'mood-popup ' + mood;
+  document.getElementById('moodTitle').textContent = data.title;
+  document.getElementById('moodTitle').style.color = data.color;
+  document.getElementById('moodMsg').textContent = data.msg;
+
+  // Update sprite eyes for mood
+  const eyes = document.querySelectorAll('.sprite-eye');
+  if (mood === 'happy') {
+    eyes.forEach(e => { e.style.height = '6px'; e.style.borderRadius = '0'; e.style.top = '16px'; });
+  } else if (mood === 'angry') {
+    eyes.forEach(e => { e.style.height = '10px'; e.style.borderRadius = '50%'; e.style.top = '14px'; });
+    // Angry eyebrows
+    document.querySelectorAll('.sprite-eye.left').forEach(e => e.style.transform = 'rotate(-15deg)');
+    document.querySelectorAll('.sprite-eye.right').forEach(e => e.style.transform = 'rotate(15deg)');
+  } else {
+    eyes.forEach(e => { e.style.height = '10px'; e.style.borderRadius = '50%'; e.style.top = '14px'; e.style.transform = 'rotate(0)'; });
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// 7. EVENT LISTENERS — COLORS
+// ════════════════════════════════════════════════════════════
+Object.values(colorInputs).forEach(el => {
+  el.addEventListener('input', fullSyncAndApply);
+});
+
+// Typography
+[fontFamily, fontHeading, fontBody, fontSmall, letterSpacing].forEach(el => {
+  el.addEventListener('input', fullSyncAndApply);
+});
+
+// Components
+[rGlobal, rPanel, rBtn, rInput, btnPadX, btnPadY, orbOp].forEach(el => {
+  el.addEventListener('input', fullSyncAndApply);
+});
+
+// Sprite colors
+[sBody, sHead, sEar, sEye, sMouth, sGlow, sShadow, spriteScale, spriteExpr].forEach(el => {
+  el.addEventListener('input', fullSyncAndApply);
+});
+
+// ════════════════════════════════════════════════════════════
+// 8. TABS
+// ════════════════════════════════════════════════════════════
+document.querySelectorAll('.sidebar-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ════════════════════════════════════════════════════════════
+// 9. MOOD SELECTOR
+// ════════════════════════════════════════════════════════════
+document.querySelectorAll('.mood-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeMood = btn.dataset.mood;
+    updateMoodPopup(activeMood);
+  });
+});
+
+// ════════════════════════════════════════════════════════════
+// 10. SPRITE UPLOAD
+// ════════════════════════════════════════════════════════════
+uploadZone.addEventListener('click', () => fileInput.click());
+
+uploadZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadZone.classList.add('dragover');
+});
+uploadZone.addEventListener('dragleave', () => {
+  uploadZone.classList.remove('dragover');
+});
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleSpriteFile(e.dataTransfer.files[0]);
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) handleSpriteFile(fileInput.files[0]);
+});
+
+function handleSpriteFile(file) {
+  if (!file.type.match(/image\/(png|gif|svg\+xml|webp)/)) {
+    showToast('⚠️ Solo PNG, GIF, SVG o WebP');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    customSpriteDataURL = e.target.result;
+    currentTheme.sprite.customImage = customSpriteDataURL;
+    previewImg.src = customSpriteDataURL;
+    fileName.textContent = file.name;
+    fileSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
+    uploadPreview.classList.add('show');
+    applyTheme();
+    showToast('✅ Sprite personalizado cargado');
+  };
+  reader.readAsDataURL(file);
+}
+
+removeSpriteBtn.addEventListener('click', () => {
+  customSpriteDataURL = null;
+  currentTheme.sprite.customImage = null;
+  uploadPreview.classList.remove('show');
+  fileInput.value = '';
+  applyTheme();
+  showToast('🗑️ Sprite personalizado eliminado');
+});
+
+// ════════════════════════════════════════════════════════════
+// 11. EXPORT / IMPORT / RESET
+// ════════════════════════════════════════════════════════════
+document.getElementById('exportBtn').addEventListener('click', () => {
+  fullSyncAndApply();
+  const modal = document.getElementById('jsonModal');
+  const output = document.getElementById('jsonOutput');
+  const title = document.getElementById('modalTitle');
+  const applyBtn = document.getElementById('applyImportBtn');
+  title.textContent = '📤 Exportar Tema — Copia este JSON';
+  output.readOnly = true;
+  output.value = JSON.stringify(currentTheme, null, 2);
+  applyBtn.style.display = 'none';
+  modal.classList.add('show');
+});
+
+document.getElementById('importBtn').addEventListener('click', () => {
+  const modal = document.getElementById('jsonModal');
+  const output = document.getElementById('jsonOutput');
+  const title = document.getElementById('modalTitle');
+  const applyBtn = document.getElementById('applyImportBtn');
+  title.textContent = '📥 Importar Tema — Pega el JSON aquí';
+  output.readOnly = false;
+  output.value = '';
+  applyBtn.style.display = 'block';
+  modal.classList.add('show');
+});
+
+document.getElementById('applyImportBtn').addEventListener('click', () => {
+  try {
+    const parsed = JSON.parse(document.getElementById('jsonOutput').value);
+    if (!parsed.colors || !parsed.typography || !parsed.components || !parsed.sprite) {
+      throw new Error('Estructura inválida');
+    }
+    currentTheme = parsed;
+    syncThemeToUI();
+    fullSyncAndApply();
+    document.getElementById('jsonModal').classList.remove('show');
+    showToast('✅ Tema importado y aplicado');
+  } catch (e) {
+    showToast('❌ Error: JSON inválido o estructura incorrecta');
+  }
+});
+
+document.getElementById('closeModalBtn').addEventListener('click', () => {
+  document.getElementById('jsonModal').classList.remove('show');
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const output = document.getElementById('jsonOutput');
+  output.select();
+  navigator.clipboard.writeText(output.value).then(() => {
+    showToast('📋 Copiado al portapapeles');
+  }).catch(() => {
+    showToast('📋 Seleccionado — Ctrl+C para copiar');
+  });
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (!confirm('¿Restaurar el tema por defecto?')) return;
+  currentTheme = JSON.parse(JSON.stringify(DEFAULTS));
+  syncThemeToUI();
+  fullSyncAndApply();
+  showToast('↺ Tema restaurado a valores por defecto');
+});
+
+function syncThemeToUI() {
+  const t = currentTheme;
+  for (const [key, el] of Object.entries(colorInputs)) {
+    if (t.colors[key]) el.value = t.colors[key];
+  }
+  fontFamily.value = t.typography.fontFamily;
+  fontHeading.value = t.typography.heading;
+  fontBody.value = t.typography.body;
+  fontSmall.value = t.typography.small;
+  letterSpacing.value = t.typography.letterSpacing;
+  rGlobal.value = t.components.radiusGlobal;
+  rPanel.value = t.components.radiusPanel;
+  rBtn.value = t.components.radiusBtn;
+  rInput.value = t.components.radiusInput;
+  btnPadX.value = t.components.btnPaddingX;
+  btnPadY.value = t.components.btnPaddingY;
+  orbOp.value = t.components.orbOpacity;
+  sBody.value = t.sprite.body || DEFAULTS.sprite.body;
+  sHead.value = t.sprite.head || DEFAULTS.sprite.head;
+  sEar.value = t.sprite.ear || DEFAULTS.sprite.ear;
+  sEye.value = t.sprite.eye || DEFAULTS.sprite.eye;
+  sMouth.value = t.sprite.mouth || DEFAULTS.sprite.mouth;
+  sGlow.value = t.sprite.glow || DEFAULTS.sprite.glow;
+  sShadow.value = t.sprite.shadow || DEFAULTS.sprite.shadow;
+  spriteScale.value = t.sprite.scale || 1;
+  spriteExpr.value = t.sprite.expression || 'neutral';
+
+  if (t.sprite.customImage) {
+    customSpriteDataURL = t.sprite.customImage;
+    previewImg.src = t.sprite.customImage;
+    fileName.textContent = 'custom sprite';
+    fileSize.textContent = 'importado';
+    uploadPreview.classList.add('show');
+  } else {
+    uploadPreview.classList.remove('show');
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// 11.5 LAYOUT & CONTENT
+// ════════════════════════════════════════════════════════════
+const LAYOUT_DEFAULTS = {
+  sections: {
+    sprite:  { visible: true, order: 0, label: '🖼️ Mascota' },
+    panels:  { visible: true, order: 1, label: '📋 Paneles y botones' },
+    bubble:  { visible: true, order: 2, label: '💬 Burbuja de diálogo' },
+    fullscreen: { visible: true, order: 3, label: '🖥️ Pantalla completa' },
+  },
+  gap: 20,
+  alignment: 'center',
+  padding: 24,
+};
+
+const CONTENT_DEFAULTS = {
+  panelTitle: '📋 Panel de ejemplo',
+  btnSolid: 'Solid',
+  btnGhost: 'Ghost',
+  btnDanger: 'Peligro',
+  btnDisabled: 'Disabled',
+  inputPlaceholder: 'Escribe algo...',
+  inputText: 'Texto de ejemplo',
+  textareaPlaceholder: 'Área de texto...',
+  textareaText: 'Esto es un texto\nmultilínea de ejemplo',
+  bubbleText: '¡Hola! Soy tu mascota y estoy aquí para ayudarte con tus tareas.',
+  screenTitle: 'TITLE',
+  screenSubtitle: 'subtítulo ejemplo',
+  screenAction: 'ACCIÓN',
+  taskTitle: '📌 Tarea destacada',
+  taskDesc: 'Completar el diseño del theme editor',
+  taskStatus: '● COMPLETADA',
+  taskXp: '+50 XP',
+};
+
+// Merge into DEFAULTS and currentTheme
+DEFAULTS.layout = JSON.parse(JSON.stringify(LAYOUT_DEFAULTS));
+DEFAULTS.content = JSON.parse(JSON.stringify(CONTENT_DEFAULTS));
+currentTheme.layout = JSON.parse(JSON.stringify(LAYOUT_DEFAULTS));
+currentTheme.content = JSON.parse(JSON.stringify(CONTENT_DEFAULTS));
+
+// ─── Build section list in Layout tab ──────────────────────
+function rebuildSectionList() {
+  if (!currentTheme.layout) {
+    currentTheme.layout = JSON.parse(JSON.stringify(LAYOUT_DEFAULTS));
+  }
+  const list = document.getElementById('layoutSectionList');
+  const sections = currentTheme.layout.sections;
+  const sorted = Object.entries(sections).sort((a, b) => a[1].order - b[1].order);
+
+  list.innerHTML = sorted.map(([id, s]) => `
+    <div data-section-id="${id}" style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--surface2);border-radius:4px;border:1px solid ${s.visible ? 'var(--border)' : 'rgba(255,255,255,0.05)'};opacity:${s.visible ? 1 : 0.4}">
+      <button class="layout-move-btn" data-dir="up" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:2px 4px">◄</button>
+      <button class="layout-move-btn" data-dir="down" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:2px 4px">►</button>
+      <span style="flex:1;font-size:11px;font-family:var(--font-mono);color:var(--text)">${s.label}</span>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+        <input type="checkbox" class="layout-visibility" data-section-id="${id}" ${s.visible ? 'checked' : ''} style="accent-color:var(--accent)">
+        <span style="font-size:9px;color:var(--text-muted)">ver</span>
+      </label>
+    </div>
+  `).join('');
+
+  // Attach events
+  list.querySelectorAll('.layout-visibility').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const id = e.target.dataset.sectionId;
+      currentTheme.layout.sections[id].visible = e.target.checked;
+      applyLayout();
+    });
+  });
+
+  list.querySelectorAll('.layout-move-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const dir = e.target.dataset.dir;
+      const row = e.target.closest('[data-section-id]');
+      const id = row.dataset.sectionId;
+      const sections = currentTheme.layout.sections;
+      const sorted = Object.entries(sections).sort((a, b) => a[1].order - b[1].order);
+      const idx = sorted.findIndex(([k]) => k === id);
+      if (dir === 'up' && idx > 0) {
+        [sorted[idx-1][1].order, sorted[idx][1].order] = [sorted[idx][1].order, sorted[idx-1][1].order];
+      } else if (dir === 'down' && idx < sorted.length - 1) {
+        [sorted[idx][1].order, sorted[idx+1][1].order] = [sorted[idx+1][1].order, sorted[idx][1].order];
+      }
+      rebuildSectionList();
+      applyLayout();
+    });
+  });
+}
+
+// ─── Apply layout ──────────────────────────────────────────
+function applyLayout() {
+  if (!currentTheme.layout) {
+    currentTheme.layout = JSON.parse(JSON.stringify(LAYOUT_DEFAULTS));
+  }
+  const container = document.getElementById('previewSectionsContainer');
+  const layout = currentTheme.layout;
+  const sections = layout.sections;
+
+  // Gap
+  container.style.gap = layout.gap + 'px';
+
+  // Alignment
+  container.style.alignItems = layout.alignment;
+
+  // Padding
+  document.getElementById('previewArea').style.padding = layout.padding + 'px';
+
+  // Visibility + order
+  const sorted = Object.entries(sections).sort((a, b) => a[1].order - b[1].order);
+  sorted.forEach(([id, s]) => {
+    const el = document.getElementById('section-' + id);
+    if (el) {
+      el.style.display = s.visible ? '' : 'none';
+      // Move to correct position
+      const currentIdx = Array.from(container.children).indexOf(el);
+      const desiredIdx = sorted.filter(([,s2]) => s2.visible).findIndex(([id2]) => id2 === id);
+      if (desiredIdx >= 0 && currentIdx !== desiredIdx) {
+        const ref = container.children[desiredIdx];
+        if (ref && ref !== el) {
+          container.insertBefore(el, ref);
+        } else if (!ref) {
+          container.appendChild(el);
+        }
+      }
+    }
+  });
+
+  // Update value labels
+  document.getElementById('layout-gap-val').textContent = layout.gap;
+  document.getElementById('preview-padding-val').textContent = layout.padding;
+
+  // Update alignment buttons
+  document.querySelectorAll('.layout-align-btn').forEach(b => {
+    const isActive = b.dataset.align === layout.alignment;
+    b.style.color = isActive ? 'var(--text)' : 'var(--text-muted)';
+    b.style.borderColor = isActive ? 'var(--accent)' : 'var(--border)';
+  });
+}
+
+// ─── Layout event listeners ────────────────────────────────
+document.getElementById('layout-gap').addEventListener('input', (e) => {
+  currentTheme.layout.gap = +e.target.value;
+  applyLayout();
+});
+
+document.getElementById('preview-padding').addEventListener('input', (e) => {
+  currentTheme.layout.padding = +e.target.value;
+  applyLayout();
+});
+
+document.querySelectorAll('.layout-align-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentTheme.layout.alignment = btn.dataset.align;
+    applyLayout();
+  });
+});
+
+document.getElementById('resetLayoutBtn').addEventListener('click', () => {
+  currentTheme.layout = JSON.parse(JSON.stringify(LAYOUT_DEFAULTS));
+  rebuildSectionList();
+  applyLayout();
+  showToast('↺ Layout restaurado');
+});
+
+// ─── Stretch Mode ──────────────────────────────────────────
+const stretchMode = {
+  enabled: false,
+  observer: null,
+  init() {
+    this.observer = new ResizeObserver((entries) => {
+      if (!this.enabled) return;
+      for (const entry of entries) {
+        const el = entry.target;
+        const sectionId = el.dataset.sectionId;
+        if (!sectionId) continue;
+        const indicator = document.getElementById('size-indicator-' + sectionId);
+        if (indicator) {
+          const w = Math.round(el.offsetWidth);
+          const h = Math.round(el.offsetHeight);
+          indicator.textContent = w + ' × ' + h;
+        }
+        // If sprite section, update scale based on width
+        if (sectionId === 'sprite' && currentTheme.layout) {
+          // Don't auto-update scale - let user keep slider control
+          // Just show the size
+        }
+      }
+    });
+    // Observe all preview sections
+    document.querySelectorAll('[data-section-id]').forEach(el => {
+      this.observer.observe(el);
+    });
+  },
+  enable() {
+    this.enabled = true;
+    document.getElementById('previewArea').classList.add('stretch-enabled');
+  },
+  disable() {
+    this.enabled = false;
+    document.getElementById('previewArea').classList.remove('stretch-enabled');
+  },
+  toggle(on) {
+    if (on) this.enable();
+    else this.disable();
+  }
+};
+
+document.getElementById('stretchToggle').addEventListener('change', (e) => {
+  stretchMode.toggle(e.target.checked);
+  showToast(e.target.checked ? '✋ Stretch Mode activado — estirá las secciones' : '✋ Stretch Mode desactivado');
+});
+
+// Init stretch observer on DOM ready
+stretchMode.init();
+
+// ════════════════════════════════════════════════════════════
+// 14. RESPONSIVE VIEWS
+// ════════════════════════════════════════════════════════════
+document.querySelectorAll('.resp-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.resp-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const width = parseInt(btn.dataset.width);
+    const container = document.getElementById('previewSectionsContainer');
+    if (width > 0) {
+      container.style.maxWidth = width + 'px';
+      container.style.width = '100%';
+      document.getElementById('previewArea').style.justifyContent = 'center';
+      showToast('📱 Vista: ' + width + 'px');
+    } else {
+      container.style.maxWidth = '';
+      container.style.width = '100%';
+      document.getElementById('previewArea').style.justifyContent = '';
+      showToast('↔ Vista: auto');
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════════
+// 15. LIGHT/DARK TOGGLE
+// ════════════════════════════════════════════════════════════
+document.getElementById('lightToggle').addEventListener('change', (e) => {
+  const isLight = e.target.checked;
+  const preview = document.getElementById('previewArea');
+  const icon = document.getElementById('lightModeIcon');
+  if (isLight) {
+    preview.style.setProperty('--preview-bg', '#f5f0e8');
+    preview.style.backgroundColor = '#f5f0e8';
+    // Invert text colors for light mode
+    preview.style.setProperty('--pc-text', '#1a1a2e');
+    preview.style.setProperty('--pc-muted', '#555');
+    icon.textContent = '☀️';
+  } else {
+    preview.style.setProperty('--preview-bg', currentTheme.colors.background);
+    preview.style.backgroundColor = '';
+    preview.style.setProperty('--pc-text', currentTheme.colors.text);
+    preview.style.setProperty('--pc-muted', currentTheme.colors.muted);
+    icon.textContent = '🌙';
+  }
+  showToast(isLight ? '☀️ Modo claro activado' : '🌙 Modo oscuro activado');
+});
+
+// ════════════════════════════════════════════════════════════
+// 16. SCREENSHOT (SVG foreignObject trick)
+// ════════════════════════════════════════════════════════════
+document.getElementById('screenshotBtn').addEventListener('click', () => {
+  const preview = document.getElementById('previewArea');
+  const canvas = document.getElementById('screenshotCanvas');
+
+  // Temporarily disable stretch mode for clean capture
+  const wasStretch = stretchMode.enabled;
+  if (wasStretch) stretchMode.disable();
+
+  // Use a small delay to let CSS settle
+  setTimeout(() => {
+    const w = preview.scrollWidth;
+    const h = preview.scrollHeight;
+
+    // Create SVG foreignObject
+    const svgData = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">' +
+      '<foreignObject width="100%" height="100%">' +
+      '<div xmlns="http://www.w3.org/1999/xhtml" style="width:' + w + 'px;height:' + h + 'px">' +
+      preview.innerHTML.replace(/<script[\s\S]*?<\/script>/gi, '') +
+      '</div></foreignObject></svg>';
+
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      // Download
+      const link = document.createElement('a');
+      link.download = 'taskmagotchi-theme-preview.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      URL.revokeObjectURL(url);
+
+      // Restore stretch mode
+      if (wasStretch) stretchMode.enable();
+      showToast('📸 Screenshot guardado');
+    };
+    img.onerror = () => {
+      if (wasStretch) stretchMode.enable();
+      showToast('❌ Error al capturar screenshot. Probá desactivando Stretch Mode.');
+    };
+    img.src = url;
+  }, 100);
+});
+
+// ════════════════════════════════════════════════════════════
+// 17. CONTRAST ANALYZER
+// ════════════════════════════════════════════════════════════
+function hexToLuminance(hex) {
+  const r = parseInt(hex.slice(1,3), 16) / 255;
+  const g = parseInt(hex.slice(3,5), 16) / 255;
+  const b = parseInt(hex.slice(5,7), 16) / 255;
+  const toLin = (c) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  return 0.2126 * toLin(r) + 0.7152 * toLin(g) + 0.0722 * toLin(b);
+}
+
+function calcContrast(hex1, hex2) {
+  const l1 = hexToLuminance(hex1);
+  const l2 = hexToLuminance(hex2);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function getContrastGrade(ratio) {
+  if (ratio >= 7) return { grade: 'AAA', label: 'AAA' };
+  if (ratio >= 4.5) return { grade: 'AA', label: 'AA' };
+  return { grade: 'FAIL', label: 'FAIL' };
+}
+
+function updateContrastAnalyzer() {
+  const grid = document.getElementById('contrastGrid');
+  const c = currentTheme.colors;
+  const pairs = [
+    { label: 'texto / fondo', fg: c.text, bg: c.background },
+    { label: 'texto / panel', fg: c.text, bg: c.panel },
+    { label: 'muted / fondo', fg: c.muted, bg: c.background },
+    { label: 'muted / panel', fg: c.muted, bg: c.panel },
+    { label: 'accent / fondo', fg: c.accent, bg: c.background },
+    { label: 'accent / panel', fg: c.accent, bg: c.panel },
+  ];
+  grid.innerHTML = pairs.map(p => {
+    const ratio = calcContrast(p.fg, p.bg);
+    const { grade, label } = getContrastGrade(ratio);
+    return `
+      <div class="contrast-item">
+        <div class="contrast-swatch" style="background:${p.bg};border:2px solid ${p.fg}">
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:6px;color:${p.fg}">Aa</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:9px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.label}</div>
+          <div style="font-size:8px;color:var(--text-muted)">${ratio.toFixed(1)}:1</div>
+        </div>
+        <span class="contrast-badge ${grade}">${label}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// Add to fullSyncAndApply
+const _origFullSync2 = fullSyncAndApply;
+fullSyncAndApply = function() {
+  _origFullSync2();
+  updateContrastAnalyzer();
+};
+
+// ════════════════════════════════════════════════════════════
+// 18. THEME MANAGER (localStorage)
+// ════════════════════════════════════════════════════════════
+const THEMES_STORAGE_KEY = 'taskmagotchi_saved_themes';
+
+function getSavedThemes() {
+  try { return JSON.parse(localStorage.getItem(THEMES_STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveThemesList(list) {
+  localStorage.setItem(THEMES_STORAGE_KEY, JSON.stringify(list));
+}
+
+function buildThemeList() {
+  const list = getSavedThemes();
+  const container = document.getElementById('themeList');
+  if (list.length === 0) {
+    container.innerHTML = '<p style="font-size:10px;color:var(--text-muted);opacity:0.6;text-align:center;padding:10px">No hay temas guardados todavía</p>';
+    return;
+  }
+  container.innerHTML = list.map((t, i) => `
+    <div class="theme-list-item">
+      <span class="name">${t.name || 'sin nombre'}</span>
+      <button class="mini-btn load-theme" data-index="${i}">Cargar</button>
+      <button class="mini-btn del delete-theme" data-index="${i}">×</button>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.load-theme').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const list = getSavedThemes();
+      const t = list[parseInt(btn.dataset.index)];
+      if (t) {
+        currentTheme = JSON.parse(JSON.stringify(t.theme));
+        syncThemeToUI();
+        fullSyncAndApply();
+        showToast('📦 Tema "' + (t.name || 'sin nombre') + '" cargado');
+      }
+    });
+  });
+
+  container.querySelectorAll('.delete-theme').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const list = getSavedThemes();
+      const idx = parseInt(btn.dataset.index);
+      const name = list[idx].name || 'sin nombre';
+      list.splice(idx, 1);
+      saveThemesList(list);
+      buildThemeList();
+      showToast('🗑️ Tema "' + name + '" eliminado');
+    });
+  });
+}
+
+document.getElementById('saveThemeBtn').addEventListener('click', () => {
+  fullSyncAndApply();
+  const nameInput = document.getElementById('themeNameInput');
+  const name = nameInput.value.trim() || 'Tema #' + (getSavedThemes().length + 1);
+  const list = getSavedThemes();
+  list.push({ name, theme: JSON.parse(JSON.stringify(currentTheme)), savedAt: new Date().toISOString() });
+  saveThemesList(list);
+  buildThemeList();
+  nameInput.value = '';
+  showToast('💾 Tema "' + name + '" guardado');
+});
+
+// ════════════════════════════════════════════════════════════
+// 19. UNDO/REDO
+// ════════════════════════════════════════════════════════════
+const history = {
+  stack: [],
+  index: -1,
+  maxLen: 50,
+  push(state) {
+    // Remove future states if we're in middle of history
+    this.stack = this.stack.slice(0, this.index + 1);
+    this.stack.push(JSON.parse(JSON.stringify(state)));
+    if (this.stack.length > this.maxLen) this.stack.shift();
+    this.index = this.stack.length - 1;
+    this.updateUI();
+  },
+  undo() {
+    if (this.index <= 0) return false;
+    this.index--;
+    this.restore();
+    return true;
+  },
+  redo() {
+    if (this.index >= this.stack.length - 1) return false;
+    this.index++;
+    this.restore();
+    return true;
+  },
+  restore() {
+    const state = this.stack[this.index];
+    if (state) {
+      currentTheme = JSON.parse(JSON.stringify(state));
+      syncThemeToUI();
+      fullSyncAndApply();
+      this.updateUI();
+    }
+  },
+  updateUI() {
+    const status = document.getElementById('undoStatus');
+    const total = this.stack.length;
+    const pos = this.index + 1;
+    status.textContent = '↩️ ' + pos + '/' + total + ' · Ctrl+Z deshacer · Ctrl+Shift+Z rehacer';
+  },
+};
+
+// Wrap fullSyncAndApply to push history on user changes (not on undo/redo restore)
+let _isUndoing = false;
+const _origFullSync3 = fullSyncAndApply;
+fullSyncAndApply = function() {
+  _origFullSync3();
+  if (!_isUndoing && history.stack.length > 0) {
+    // Don't push if state hasn't changed meaningfully
+    const last = history.stack[history.index];
+    if (last && JSON.stringify(last) !== JSON.stringify(currentTheme)) {
+      history.push(currentTheme);
+    }
+  } else if (history.stack.length === 0) {
+    history.push(currentTheme);
+  }
+};
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    _isUndoing = true;
+    if (history.undo()) showToast('↩️ Deshecho');
+    else showToast('↩️ No hay más cambios para deshacer');
+    _isUndoing = false;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+    e.preventDefault();
+    _isUndoing = true;
+    if (history.redo()) showToast('↪️ Rehecho');
+    else showToast('↪️ No hay más cambios para rehacer');
+    _isUndoing = false;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+    e.preventDefault();
+    _isUndoing = true;
+    if (history.redo()) showToast('↪️ Rehecho');
+    else showToast('↪️ No hay más cambios para rehacer');
+    _isUndoing = false;
+  }
+});
+
+// Init: push initial state to history + load themes
+history.push(currentTheme);
+buildThemeList();
+updateContrastAnalyzer();
+function syncContentToTheme() {
+  const c = currentTheme.content;
+  c.panelTitle = document.getElementById('ct-panel-title').value;
+  c.btnSolid = document.getElementById('ct-btn-solid').value;
+  c.btnGhost = document.getElementById('ct-btn-ghost').value;
+  c.btnDanger = document.getElementById('ct-btn-danger').value;
+  c.btnDisabled = document.getElementById('ct-btn-disabled').value;
+  c.inputPlaceholder = document.getElementById('ct-input-placeholder').value;
+  c.inputText = document.getElementById('ct-input-text').value;
+  c.textareaPlaceholder = document.getElementById('ct-textarea-placeholder').value;
+  c.textareaText = document.getElementById('ct-textarea-text').value;
+  c.bubbleText = document.getElementById('ct-bubble-text').value;
+  c.screenTitle = document.getElementById('ct-screen-title').value;
+  c.screenSubtitle = document.getElementById('ct-screen-subtitle').value;
+  c.screenAction = document.getElementById('ct-screen-action').value;
+  c.taskTitle = document.getElementById('ct-task-title').value;
+  c.taskDesc = document.getElementById('ct-task-desc').value;
+  c.taskStatus = document.getElementById('ct-task-status').value;
+  c.taskXp = document.getElementById('ct-task-xp').value;
+}
+
+function applyContent() {
+  const c = currentTheme.content;
+  document.getElementById('ct-panel-title-display').textContent = c.panelTitle;
+  document.getElementById('ct-btn-solid-display').textContent = c.btnSolid;
+  document.getElementById('ct-btn-ghost-display').textContent = c.btnGhost;
+  document.getElementById('ct-btn-danger-display').textContent = c.btnDanger;
+  document.getElementById('ct-btn-disabled-display').textContent = c.btnDisabled;
+  document.getElementById('ct-input-display').placeholder = c.inputPlaceholder;
+  document.getElementById('ct-input-display').value = c.inputText;
+  document.getElementById('ct-textarea-display').placeholder = c.textareaPlaceholder;
+  document.getElementById('ct-textarea-display').value = c.textareaText;
+  document.getElementById('ct-bubble-display').childNodes[0].textContent = c.bubbleText;
+  document.getElementById('ct-screen-title-display').textContent = c.screenTitle;
+  document.getElementById('ct-screen-subtitle-display').textContent = c.screenSubtitle;
+  document.getElementById('ct-screen-action-display').textContent = c.screenAction;
+  document.getElementById('ct-task-title-display').textContent = c.taskTitle;
+  document.getElementById('ct-task-desc-display').textContent = c.taskDesc;
+  document.getElementById('ct-task-status-display').textContent = c.taskStatus;
+  document.getElementById('ct-task-xp-display').textContent = c.taskXp;
+}
+
+function syncContentToUI() {
+  const c = currentTheme.content || {};
+  document.getElementById('ct-panel-title').value = c.panelTitle || CONTENT_DEFAULTS.panelTitle;
+  document.getElementById('ct-btn-solid').value = c.btnSolid || CONTENT_DEFAULTS.btnSolid;
+  document.getElementById('ct-btn-ghost').value = c.btnGhost || CONTENT_DEFAULTS.btnGhost;
+  document.getElementById('ct-btn-danger').value = c.btnDanger || CONTENT_DEFAULTS.btnDanger;
+  document.getElementById('ct-btn-disabled').value = c.btnDisabled || CONTENT_DEFAULTS.btnDisabled;
+  document.getElementById('ct-input-placeholder').value = c.inputPlaceholder || CONTENT_DEFAULTS.inputPlaceholder;
+  document.getElementById('ct-input-text').value = c.inputText || CONTENT_DEFAULTS.inputText;
+  document.getElementById('ct-textarea-placeholder').value = c.textareaPlaceholder || CONTENT_DEFAULTS.textareaPlaceholder;
+  document.getElementById('ct-textarea-text').value = c.textareaText || CONTENT_DEFAULTS.textareaText;
+  document.getElementById('ct-bubble-text').value = c.bubbleText || CONTENT_DEFAULTS.bubbleText;
+  document.getElementById('ct-screen-title').value = c.screenTitle || CONTENT_DEFAULTS.screenTitle;
+  document.getElementById('ct-screen-subtitle').value = c.screenSubtitle || CONTENT_DEFAULTS.screenSubtitle;
+  document.getElementById('ct-screen-action').value = c.screenAction || CONTENT_DEFAULTS.screenAction;
+  document.getElementById('ct-task-title').value = c.taskTitle || CONTENT_DEFAULTS.taskTitle;
+  document.getElementById('ct-task-desc').value = c.taskDesc || CONTENT_DEFAULTS.taskDesc;
+  document.getElementById('ct-task-status').value = c.taskStatus || CONTENT_DEFAULTS.taskStatus;
+  document.getElementById('ct-task-xp').value = c.taskXp || CONTENT_DEFAULTS.taskXp;
+}
+
+// Content event listeners
+document.querySelectorAll('#tab-content input, #tab-content textarea').forEach(el => {
+  el.addEventListener('input', () => {
+    syncContentToTheme();
+    applyContent();
+  });
+});
+
+// Extend fullSyncAndApply to include layout + content
+const _origFullSync = fullSyncAndApply;
+fullSyncAndApply = function() {
+  _origFullSync();
+  syncContentToTheme();
+  applyContent();
+  applyLayout();
+};
+
+// Extend syncThemeToUI for layout + content
+const _origSyncUI = syncThemeToUI;
+syncThemeToUI = function() {
+  _origSyncUI();
+  if (currentTheme.layout) {
+    document.getElementById('layout-gap').value = currentTheme.layout.gap;
+    document.getElementById('preview-padding').value = currentTheme.layout.padding;
+  }
+  syncContentToUI();
+  rebuildSectionList();
+};
+// ════════════════════════════════════════════════════════════
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ════════════════════════════════════════════════════════════
+// 13. INIT
+// ════════════════════════════════════════════════════════════
+fullSyncAndApply();
+showToast('🎨 Bienvenido al Theme Editor — ajusta y exporta!');
+</script>
+</body>
+</html>

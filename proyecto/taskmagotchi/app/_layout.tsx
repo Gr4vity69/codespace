@@ -83,6 +83,7 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="camera/[taskId]" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="playground" options={{ presentation: 'modal', headerShown: false }} />
       </Stack>
     </>
   )
