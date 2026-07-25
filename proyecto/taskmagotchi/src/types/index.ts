@@ -1,22 +1,27 @@
+// ── Core domain types ─────────────────────────────────────────────
+
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'verified'
+export type TaskPriority = 'low' | 'medium' | 'high'
+export type PetMood = 'happy' | 'normal' | 'sad' | 'angry'
+
 export interface Pet {
   id: number
   name: string
-  /** Skin name — maps to assets/skins/<species>/ */
   species: string
+  happiness: number
+  hunger: number
+  energy: number
   level: number
   xp: number
   xpToNextLevel: number
+  lastFed: number
+  lastPlayed: number
   coins: number
   totalEarned: number
   totalSpent: number
   streak: number
   lastStreakDate: string
 }
-
-export type PetMood = 'normal' | 'happy' | 'sad' | 'angry'
-
-export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'verified'
-export type TaskPriority = 'low' | 'medium' | 'high'
 
 export interface Task {
   id: number
@@ -94,10 +99,11 @@ export interface ConversationLog {
 }
 
 export interface DailyConfig {
+  id: number
   isDayOff: boolean
   boredomBlockMinutes: number
   unblockMathDifficulty: 'easy' | 'medium' | 'hard'
-  tasksAddedToday: boolean
+  tasksAddedToday: number
   date: string
 }
 
@@ -112,29 +118,31 @@ export interface ChatMessage {
 }
 
 export interface AIBlockResponse {
-  action: 'block_app' | 'unblock_app' | 'list_blocked' | 'block_suggestion'
-  appName?: string
+  action: 'list_blocked' | 'block_app' | 'unblock_app' | 'block_suggestion'
   packageName?: string
+  appName?: string
   reason?: string
+  blocked?: boolean
+}
+
+export interface AIPlanTask {
+  title: string
+  description: string
+  priority: TaskPriority
+  estimatedMinutes: number
+  whitelistedApps?: string[]
+  materials?: string
+}
+
+export interface AIPlanSchedule {
+  taskTitle: string
+  breakAfter?: number
+  startTime?: string
+  endTime?: string
 }
 
 export interface AIPlanResponse {
-  ready?: boolean
-  suggestion?: string
-  description?: string
-  duration?: number
-  tasks: {
-    title: string
-    description: string
-    priority: TaskPriority
-    estimatedMinutes: number
-    whitelistedApps: string[]
-    materials: string
-  }[]
-  schedule: {
-    startTime: string
-    endTime: string
-    taskTitle: string
-    breakAfter: number
-  }[]
+  ready: boolean
+  schedule?: AIPlanSchedule[]
+  tasks?: AIPlanTask[]
 }

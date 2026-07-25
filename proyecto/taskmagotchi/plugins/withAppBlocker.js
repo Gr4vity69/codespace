@@ -56,20 +56,34 @@ function withAppBlocker(expoConfig) {
       mainApplication.$['android:queryAllPackages'] = 'true'
     }
 
-    // Register BlockingService
-    if (mainApplication && mainApplication['service']) {
-      const serviceExists = mainApplication['service'].some(
-        (s) => s['$']['android:name'] === '.BlockingService'
-      )
-      if (!serviceExists) {
-        mainApplication['service'].push({
-          $: {
-            'android:name': '.BlockingService',
-            'android:foregroundServiceType': 'specialUse',
-            'android:exported': 'false',
-          },
-        })
+    // Register services
+    function ensureService(services, serviceDef) {
+      const exists = services.some((s) => s['$']['android:name'] === serviceDef['$']['android:name'])
+      if (!exists) {
+        services.push(serviceDef)
       }
+    }
+
+    const accessibilityServiceDef = {
+      $: {
+        'android:name': '.AccessibilityBlockService',
+        'android:exported': 'true',
+        'android:permission': 'android.permission.BIND_ACCESSIBILITY_SERVICE',
+      },
+      'intent-filter': [{
+        action: [{ $: { 'android:name': 'android.accessibilityservice.AccessibilityService' } }],
+      }],
+    }
+
+    if (mainApplication && mainApplication['service']) {
+      ensureService(mainApplication['service'], {
+        $: {
+          'android:name': '.BlockingService',
+          'android:foregroundServiceType': 'specialUse',
+          'android:exported': 'false',
+        },
+      })
+      ensureService(mainApplication['service'], accessibilityServiceDef)
     } else if (mainApplication) {
       mainApplication['service'] = [
         {
@@ -79,6 +93,7 @@ function withAppBlocker(expoConfig) {
             'android:exported': 'false',
           },
         },
+        accessibilityServiceDef,
       ]
     }
 
@@ -188,6 +203,7 @@ function withAppBlocker(expoConfig) {
         'AppBlockerModule.kt',
         'AppBlockerPackage.kt',
         'BlockingService.kt',
+        'AccessibilityBlockService.kt',
       ]
       for (const file of files) {
         const content = readNativeSource(file)

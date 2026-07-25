@@ -4,8 +4,12 @@ import android.app.ActivityManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.PixelFormat
 import android.os.Build
 import android.provider.Settings
+import android.view.Gravity
+import android.view.WindowManager
+import android.widget.TextView
 import com.facebook.react.bridge.*
 
 class AppBlockerModule(reactContext: ReactApplicationContext) :
@@ -18,7 +22,12 @@ class AppBlockerModule(reactContext: ReactApplicationContext) :
     const val PREFS_NAME = "app_blocker_prefs"
     const val PREFS_SERVICE_RUNNING = "service_running"
     const val PREFS_UNLOCK_UNTIL = "unlock_until"
+    const val PREFS_BLOCKED_PACKAGES = "blocked_packages"
+    const val PREFS_BLOCKING_ENABLED = "blocking_enabled"
   }
+
+  private var overlayView: TextView? = null
+  private var overlayParams: WindowManager.LayoutParams? = null
 
   override fun getName(): String = NAME
 
@@ -40,7 +49,11 @@ class AppBlockerModule(reactContext: ReactApplicationContext) :
         context.startService(serviceIntent)
       }
 
-      getPrefs().edit().putBoolean(PREFS_SERVICE_RUNNING, true).apply()
+      getPrefs().edit()
+        .putBoolean(PREFS_SERVICE_RUNNING, true)
+        .putBoolean(PREFS_BLOCKING_ENABLED, true)
+        .apply()
+      BlockingService.blockedPackages = getPrefs().getStringSet(PREFS_BLOCKED_PACKAGES, emptySet()) ?: emptySet()
       promise.resolve(true)
     } catch (e: Exception) {
       promise.reject("SERVICE_ERROR", e.message)
@@ -53,7 +66,11 @@ class AppBlockerModule(reactContext: ReactApplicationContext) :
       val context = reactApplicationContext
       val serviceIntent = Intent(context, BlockingService::class.java)
       context.stopService(serviceIntent)
-      getPrefs().edit().putBoolean(PREFS_SERVICE_RUNNING, false).apply()
+      getPrefs().edit()
+        .putBoolean(PREFS_SERVICE_RUNNING, false)
+        .putBoolean(PREFS_BLOCKING_ENABLED, false)
+        .apply()
+      BlockingService.isCurrentlyBlocked = false
       promise.resolve(true)
     } catch (e: Exception) {
       promise.reject("SERVICE_ERROR", e.message)
@@ -121,6 +138,47 @@ class AppBlockerModule(reactContext: ReactApplicationContext) :
           return
         }
       }
+
+      // Remove existing overlay if any
+      hideOverlayInternal()
+
+      val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+      val mood = BlockingService.petMood
+      val moodEmoji = when (mood) {
+        "happy" -> "😊"
+        "sad" -> "😢"
+        "angry" -> "😠"
+        else -> "😐"
+      }
+      val moodBg = when (mood) {
+        "happy" -> "#CC0d1f15"
+        "sad" -> "#CC0d131f"
+        "angry" -> "#CC1f0d0d"
+        else -> "#CC0f0f23"
+      }
+      val view = TextView(context).apply {
+        text = "$moodEmoji  MAGOTCHI — ${mood.uppercase()}"
+        setTextColor(android.graphics.Color.WHITE)
+        textSize = 20f
+        gravity = Gravity.CENTER
+        setBackgroundColor(android.graphics.Color.parseColor(moodBg))
+      }
+
+      val params = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.MATCH_PARENT,
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+          WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else
+          WindowManager.LayoutParams.TYPE_PHONE,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+          WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+        PixelFormat.TRANSLUCENT
+      )
+
+      wm.addView(view, params)
+      overlayView = view
+      overlayParams = params
       promise.resolve(true)
     } catch (e: Exception) {
       promise.reject("OVERLAY_ERROR", e.message)
@@ -129,7 +187,23 @@ class AppBlockerModule(reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun hideOverlay(promise: Promise) {
-    promise.resolve(true)
+    try {
+      hideOverlayInternal()
+      promise.resolve(true)
+    } catch (e: Exception) {
+      promise.reject("OVERLAY_ERROR", e.message)
+    }
+  }
+
+  private fun hideOverlayInternal() {
+    if (overlayView != null) {
+      try {
+        val wm = reactApplicationContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        wm.removeView(overlayView)
+      } catch (_: Exception) {}
+      overlayView = null
+      overlayParams = null
+    }
   }
 
   @ReactMethod
@@ -164,6 +238,20 @@ class AppBlockerModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun isAccessibilityServiceEnabled(promise: Promise) {
+    try {
+      val enabledServices = Settings.Secure.getString(
+        reactApplicationContext.contentResolver,
+        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+      ) ?: ""
+      val ourComponent = "${reactApplicationContext.packageName}/.AccessibilityBlockService"
+      promise.resolve(enabledServices.contains(ourComponent))
+    } catch (e: Exception) {
+      promise.resolve(false)
+    }
+  }
+
+  @ReactMethod
   fun requestUsageStatsPermission(promise: Promise) {
     try {
       val context = reactApplicationContext
@@ -173,6 +261,32 @@ class AppBlockerModule(reactContext: ReactApplicationContext) :
       promise.resolve(true)
     } catch (e: Exception) {
       promise.reject("INTENT_ERROR", e.message)
+    }
+  }
+
+  @ReactMethod
+  fun setPetMood(mood: String, promise: Promise) {
+    try {
+      getPrefs().edit().putString("pet_mood", mood).apply()
+      BlockingService.petMood = mood
+      promise.resolve(true)
+    } catch (e: Exception) {
+      promise.reject("MOOD_ERROR", e.message)
+    }
+  }
+
+  @ReactMethod
+  fun setBlockedPackages(packages: ReadableArray, promise: Promise) {
+    try {
+      val pkgSet = mutableSetOf<String>()
+      for (i in 0 until packages.size()) {
+        pkgSet.add(packages.getString(i))
+      }
+      getPrefs().edit().putStringSet(PREFS_BLOCKED_PACKAGES, pkgSet).apply()
+      BlockingService.blockedPackages = pkgSet
+      promise.resolve(true)
+    } catch (e: Exception) {
+      promise.reject("PREFS_ERROR", e.message)
     }
   }
 

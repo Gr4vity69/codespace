@@ -10,7 +10,13 @@ import {
   getApps, upsertApp, deleteApp, toggleApp,
   getSchedules, updateSchedule, toggleSchedule, DAY_NAMES,
 } from '../../src/services/settingsDb'
-import { setTemporaryUnlock, getTemporaryUnlockRemaining } from '../../src/services/blocking'
+import {
+  setTemporaryUnlock, getTemporaryUnlockRemaining, syncBlockedAppsToNative,
+  requestOverlayPermission, requestUsageStatsPermission,
+  startBlockingService, stopBlockingService,
+  isBlockingAvailable, isAccessibilityServiceEnabled,
+  requestAccessibilityService,
+} from '../../src/services/blocking'
 import PetSprite, { AVAILABLE_SKINS } from '../../src/components/petSprite'
 import type { MathChallenge, BlockedApp, Schedule, PetMood } from '../../src/types'
 import {
@@ -65,9 +71,27 @@ export default function SettingsScreen() {
   const [editStart, setEditStart] = useState('')
   const [editEnd, setEditEnd] = useState('')
 
+  // ── Blocking service state ──
+  const [serviceRunning, setServiceRunning] = useState(false)
+  const [accessibilityEnabled, setAccessibilityEnabled] = useState(false)
+
+  const checkServiceStatus = useCallback(async () => {
+    try {
+      if (Platform.OS === 'android') {
+        const { isServiceRunning: isSR } = await import('../../src/services/blocking')
+        const [sr, ae] = await Promise.all([isSR(), isAccessibilityServiceEnabled()])
+        setServiceRunning(sr)
+        setAccessibilityEnabled(ae)
+      }
+    } catch {}
+  }, [])
+
   // ── Load data ──
   const loadApps = useCallback(async () => {
-    try { setApps(await getApps()) } catch {}
+    try {
+      setApps(await getApps())
+      await syncBlockedAppsToNative()
+    } catch {}
   }, [])
 
   const loadSchedules = useCallback(async () => {
@@ -81,9 +105,10 @@ export default function SettingsScreen() {
       if (gemk) setGeminiKey(gemk)
       setKeysLoaded(true)
       await Promise.all([loadApps(), loadSchedules()])
+      await checkServiceStatus()
     }
     init()
-  }, [loadApps, loadSchedules])
+  }, [loadApps, loadSchedules, checkServiceStatus])
 
   // ── API Key handlers ──
   async function handleSaveGroqKey() {
@@ -238,6 +263,62 @@ export default function SettingsScreen() {
         {/* ───────────── Bloqueo ───────────── */}
         <RetroSectionTitle>Bloqueo</RetroSectionTitle>
         <RetroPanel style={styles.card}>
+          {Platform.OS === 'android' && (
+            <>
+              <PixelButton
+                variant={serviceRunning ? 'danger' : 'solid'}
+                onPress={async () => {
+                  if (serviceRunning) {
+                    const ok = await stopBlockingService()
+                    if (ok) setServiceRunning(false)
+                  } else {
+                    await syncBlockedAppsToNative()
+                    const ok = await startBlockingService()
+                    if (ok) setServiceRunning(true)
+                  }
+                }}
+              >
+                {serviceRunning ? '⏹ DETENER BLOQUEO' : '▶ INICIAR BLOQUEO'}
+              </PixelButton>
+
+              <View style={styles.permissionRow}>
+                <PixelButton variant="ghost" style={styles.permissionBtn} onPress={requestOverlayPermission}>
+                  PERMISO SUPERPOSICIÓN
+                </PixelButton>
+                <PixelButton variant="ghost" style={styles.permissionBtn} onPress={requestUsageStatsPermission}>
+                  PERMISO USO DE APPS
+                </PixelButton>
+              </View>
+
+              {/* ── AccessibilityService ── */}
+              <View style={styles.accessibilityStatus}>
+                <Text style={styles.settingLabel}>
+                  Servicio de accesibilidad: {accessibilityEnabled ? '✅ ACTIVO' : '❌ INACTIVO'}
+                </Text>
+                <Text style={styles.accessibilityHint}>
+                  Necesario para detectar apps bloqueadas en tiempo real y bloquearlas realmente
+                </Text>
+                {!accessibilityEnabled && (
+                  <PixelButton
+                    variant="ghost"
+                    style={styles.permissionBtn}
+                    onPress={async () => {
+                      await requestAccessibilityService()
+                      // Small delay to let user toggle it on, then check
+                      setTimeout(async () => {
+                        const ok = await isAccessibilityServiceEnabled()
+                        setAccessibilityEnabled(ok)
+                        if (ok) await checkServiceStatus()
+                      }, 3000)
+                    }}
+                  >
+                    HABILITAR EN AJUSTES
+                  </PixelButton>
+                )}
+              </View>
+            </>
+          )}
+
           <PixelButton variant="danger" onPress={handleRequestUnlock}>DESBLOQUEAR TEMPORALMENTE</PixelButton>
           <Text style={styles.hint}>Resuelve un ejercicio matemático para desbloquear 15 min</Text>
         </RetroPanel>
@@ -523,6 +604,10 @@ const styles = StyleSheet.create({
   saveBtn: { width: 104, minHeight: 42 },
   hint: { fontSize: 11, color: retroColors.muted, marginTop: 6, textAlign: 'center', fontFamily: monoFont },
   placeholder: { fontSize: 12, color: retroColors.text, textAlign: 'center', fontFamily: monoFont },
+  permissionRow: { flexDirection: 'row', gap: 6 },
+  permissionBtn: { flex: 1, minHeight: 36 },
+  accessibilityStatus: { borderTopWidth: 1, borderTopColor: retroColors.borderSoft, paddingTop: 8, gap: 4 },
+  accessibilityHint: { fontSize: 10, color: retroColors.muted, fontFamily: monoFont, lineHeight: 14 },
   version: { textAlign: 'center', fontSize: 11, color: retroColors.muted, marginVertical: 18, fontFamily: monoFont, letterSpacing: 1.2 },
 
   // Pet stats

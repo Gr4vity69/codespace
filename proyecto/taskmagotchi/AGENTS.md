@@ -7,7 +7,7 @@
 - `withAppBlocker.js` los COPIA al directorio `android/` durante el prebuild
 - NO editar los archivos dentro de `android/` directamente — se sobrescriben en cada prebuild
 - El módulo usa el puente `NativeModules.AppBlocker` desde JS
-- **El bloqueo de apps NO funciona en Android moderno** (getRunningTasks restringido desde API 21). Hay un fallback con UsageStatsManager. La solución real requiere AccessibilityService.
+- **El bloqueo de apps funciona vía AccessibilityService** (solución implementada)
 
 ### 2. Config Plugin (withAppBlocker.js)
 - **Inyecta código Kotlin** (NO Java) desde SDK 57
@@ -15,57 +15,82 @@
 - El plugin es IDEMPOTENTE — verifica si el código ya existe antes de insertar
 - Permisos requeridos para Android 13+: `POST_NOTIFICATIONS`
 - NO agregar `REQUEST_INSTALL_PACKAGES` — la app no instala APKs
-- El foreground service usa `foregroundServiceType: 'specialUse'`
 
 ### 3. Expo SDK 57 Específico
 - SDK 57 → React Native 0.86.0 → usa ReactHost, NO ReactNativeHost
 - MainApplication es KOTLIN (`.kt`), NO Java
 - El template usa `PackageList(this).packages.apply { add(...) }`
-- Siempre leer docs versionados: https://docs.expo.dev/versions/v57.0.0/
 
 ### 4. Base de Datos (SQLite via expo-sqlite)
 - Schema completo en `src/services/database.ts` — esa es la fuente de verdad
-- `conversationMemory.ts` tiene `ensureTable()` pero NO debe definir el schema — solo crea la tabla si `database.ts` no lo hizo
-- NO crear tablas duplicadas con diferentes schemas
-- Migraciones: usar `CREATE TABLE IF NOT EXISTS` — NO modificar columnas existentes sin migración
-- API keys NUNCA en texto plano — usar expo-secure-store cuando esté disponible
+- `conversationMemory.ts` tiene `ensureTable()` pero NO debe definir el schema
+- Usar `CREATE TABLE IF NOT EXISTS` para migraciones
+- API keys NUNCA en texto plano — usar `expo-secure-store`
 
 ### 5. Stores (Zustand)
 - `petStore.ts` + `taskStore.ts` son las fuentes de verdad en memoria
-- Siempre escribir a DB primero, luego actualizar store (evitar optimistic updates sin rollback)
-- `todayTasks` en taskStore filtra por fecha de creación — tareas viejas sin deadline quedan invisibles
+- Siempre escribir a DB primero, luego actualizar store
+- `todayTasks` filtra por fecha de creación
 
-### 6. AI Integration (Groq + Gemini)
+### 6. Game Loop System (Mood Solo por Tareas)
+- **Engine**: `src/utils/petGameLoop.ts` → lógica central de mascota
+- **Mood basado ÚNICAMENTE en tareas** (ningún vital influye):
+  - `applyTaskCompletion()` → registra que se completó una tarea
+  - `applyTaskSkip()` → registra que se saltó una tarea
+  - `applyOverduePenalty()` → registra tareas vencidas
+- **Mood calculation** (`computeMood`):
+  - `angry`: 3+ tareas vencidas
+  - `happy`: streak ≥2 Y 2+ tareas completadas hoy
+  - `sad`: 0 completadas + 3+ pendientes
+  - `normal`: todo lo demás
+- **UI**: `MoodPopup` en `src/components/moodPopup.tsx` + overlay nativo en bloqueo
+
+### 7. UI Orgánica (sin barras vitales)
+- NO usar barras de progreso para hambre/felicidad/energía
+- El mood se muestra únicamente mediante el sprite de la mascota y el popup contextual
+- Diseño orgánico: la mascota reacciona solo a lo que el usuario hace con las tareas
+
+### 8. Vital Bars — ELIMINADOS
+- Se removeron las barras ❤️🍖⚡ de home.tsx y settings.tsx
+- La mascota ahora muestra su estado SOLO a través del sprite (4 moods) y popups animados
+- Ya NO se muestra el % de felicidad/hambre/energía en ninguna pantalla
+
+### 7. AI Integration (Groq + Gemini)
 - Groq: `Authorization: Bearer` header
-- Gemini: `x-goog-api-key` header (NO en URL query param)
-- Siempre usar AbortController con timeout de 30s en fetch
-- Groq model: `llama-3.1-8b-instant`
-- Gemini model: `gemini-1.5-flash`
-- AI puede inventar packageNames — validar contra `getInstalledApps()` antes de bloquear
+- Gemini: `x-goog-api-key` header
+- AbortController con timeout de 30s en fetch
 
-### 7. Regex para parseo de JSON
-- SIEMPRE usar non-greedy `\{[\s\S]*?\}` — NUNCA greedy `\{[\s\S]*\}`
-- Esto aplica en: `chat.tsx`, `ai.ts`, `conversationMemory.ts`
-- Los catch de JSON.parse deben al menos hacer console.warn
+### 8. Regex para parseo de JSON
+- SIEMPRE usar non-greedy `\{[\s\S]*?\}` 
+- Catch de JSON.parse debe hacer al menos `console.warn`
 
-### 8. Fonts
-- `monoFont` está definido en `retroUi.tsx` — importarlo desde ahí
-- NO hardcodear `fontFamily: 'monospace'` directamente en los estilos
+### 9. Fonts
+- `monoFont` definido en `retroUi.tsx`
 - iOS: `Menlo`, Android: `monospace`
 
-### 9. Seguridad
-- API keys: almacenadas en tabla `api_keys` (plaintext por ahora)
-- Migrar a expo-secure-store cuando sea posible
-- Database backup: `allowBackup=true` en Android — keys extraíbles via ADB
+### 10. Seguridad
+- API keys en `expo-secure-store`
+- Database backup: `allowBackup=true` en Android
 
-## 📋 Deuda Técnica Conocida
-1. **App blocker no funcional** — getRunningTasks no detecta otras apps en Android 10+. Solución: AccessibilityService
-2. **showOverlay no implementado** — la función existe pero no crea overlay real
-3. **Streak bonus no aplicado** — calculateTaskReward recibe hasStreak=false siempre
-4. **Penalty system no integrado** — calculatePenalty existe pero nunca se llama
-5. **happiness/hunger/energy en DB pero no en UI** — columnas existen, modelo TypeScript no las expone
-6. **No hay transacciones en initDatabase** — schema creation sin BEGIN/COMMIT
-7. **Math challenge no conecta con blocking** — es decorativo, no bloquea realmente
+## 📋 Estado del Proyecto (Actualizado — 2026-07-24)
+
+### ✅ Resuelto
+1. Game loop conectado a tareas completadas/saltadas/vencidas
+2. Mood popup integrado en camera/[taskId].tsx
+3. Time decay aplicado en _layout.tsx (no afecta mood)
+4. Overdue penalty en taskStore.ts
+5. Mood sync con overlay nativo (BlockingService.kt)
+6. API keys migradas a expo-secure-store
+7. AccessibilityService implementado para bloqueo real
+8. **Mood depende SOLAMENTE de tareas** (sin vitales artificiales)
+9. **Barras vitales (❤️🍖⚡) ELIMINADAS** de home y settings
+10. Diseño orgánico: mascota reacciona solo a acciones del usuario
+
+### ⏳ Pendiente
+1. Calendario completo tipo Google Calendar
+2. Bloques visuales por hora en agenda
+3. Edición directa de plan desde agenda
+4. Diseño visual orgánico con Antigravity
 
 ## 🔧 Comandos Útiles
 ```bash
@@ -78,6 +103,37 @@ eas build --profile preview --platform android
 npx expo start
 npx expo run:android
 
-# Actualizar dependencias
-npx expo install expo@latest --fix
+# Tests
+npx jest test/path/to/test.spec.ts --coverage
+npx jest --watch           # modo watch
+
+# Lint & Format
+npx eslint . --fix
+npm run lint
+
+# Type Check
+npx tsc --noEmit
+```
+
+## 🧪 Testing
+- Unit: `src/__tests__/unit/`
+- Integration: `src/__tests__/integration/`
+- E2E: `e2e/tests/`
+- UI Tests: `src/__tests__/ui/`
+
+## 📁 Estructura Clave
+```
+src/
+├── components/     → UI components (PetSprite, MoodPopup, RetroUI)
+├── store/          → Zustand stores (petStore, taskStore)
+├── utils/          → Business logic (petGameLoop.ts, petEngine.ts)
+├── services/       → Data/API layer (database, groqChat, blocking)
+└── types/          → TypeScript interfaces (index.ts)
+
+app/
+├── _layout.tsx     → App init + time decay
+├── (tabs)/         → Screen navigators
+└── camera/         → Task verification flow
+
+native/android/     → Kotlin modules (BlockingService, AppBlockerModule)
 ```

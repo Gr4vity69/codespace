@@ -9,6 +9,9 @@ import { useTaskStore } from '../../src/store/taskStore'
 import { usePetStore } from '../../src/store/petStore'
 import { verifyTaskCompletion } from '../../src/services/ai'
 import { addXp, addCoins, calculateTaskReward } from '../../src/utils/petEngine'
+import { applyTaskCompletion, computeMood } from '../../src/utils/petGameLoop'
+import MoodPopup from '../../src/components/moodPopup'
+import type { PetMood } from '../../src/types'
 import { PixelButton, RetroPanel, RetroScreen, retroColors, monoFont } from '../../src/components/retroUi'
 
 export default function CameraScreen() {
@@ -21,6 +24,8 @@ export default function CameraScreen() {
   const [verifying, setVerifying] = useState(false)
   const [verified, setVerified] = useState<boolean | null>(null)
   const [reason, setReason] = useState('')
+  const [showMoodPopup, setShowMoodPopup] = useState(false)
+  const [popupMood, setPopupMood] = useState<PetMood>('normal')
 
   const tasks = useTaskStore(s => s.tasks)
   const updateTask = useTaskStore(s => s.updateTask)
@@ -56,7 +61,31 @@ export default function CameraScreen() {
     }
   }
 
-  async function handleVerify() {
+  // ── Streak helper ─────────────────────────────────────────────────
+function computeNewStreak(pet: { streak: number; lastStreakDate: string | null }): { streak: number; lastStreakDate: string } {
+  const today = new Date().toISOString().split('T')[0]
+  const lastDate = pet.lastStreakDate || ''
+
+  if (lastDate === today) {
+    // Ya contamos hoy — mantener racha actual
+    return { streak: pet.streak, lastStreakDate: lastDate }
+  }
+
+  // Calcular "ayer"
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStr = yesterday.toISOString().split('T')[0]
+
+  if (lastDate === yesterdayStr) {
+    // Día consecutivo — incrementar racha
+    return { streak: (pet.streak || 0) + 1, lastStreakDate: today }
+  }
+
+  // Racha rota o primera vez — empezar de nuevo
+  return { streak: 1, lastStreakDate: today }
+}
+
+async function handleVerify() {
     if (!photoUri || !task) return
     setVerifying(true)
 
@@ -81,12 +110,25 @@ export default function CameraScreen() {
         completedAt: result.verified ? Date.now() : null,
       })
 
-      // 2) SOLO si la tarea se actualizó bien, dar recompensa a la mascota
+      // 2) SOLO si la tarea se actualizó bien, dar recompensa a la mascota + streak + game loop
       if (result.verified && pet) {
-        const hasStreak = (pet.streak ?? 0) > 0
+        const { streak, lastStreakDate } = computeNewStreak(pet)
+        const hasStreak = streak > 0
         const reward = calculateTaskReward(task, true, hasStreak)
-        const updatedPet = addCoins(addXp(pet, reward.xp), reward.coins)
-        await updatePet(updatedPet)
+
+        // Base: XP + coins
+        let updatedPet = addCoins(addXp(pet, reward.xp), reward.coins)
+
+        // Game loop: happiness/energy/hunger cambian AL COMPLETAR
+        const moodUpdates = applyTaskCompletion(updatedPet)
+        const finalPet = { ...updatedPet, ...moodUpdates, streak, lastStreakDate }
+
+        await updatePet(finalPet)
+
+        // Mostrar popup con el mood resultante
+        const newMood = computeMood(finalPet, tasks)
+        setPopupMood(newMood)
+        setShowMoodPopup(true)
       }
 
       await loadTasks()
@@ -108,15 +150,25 @@ export default function CameraScreen() {
       completedAt: Date.now(),
     })
 
-    // 2) Luego dar recompensa
-    const hasStreak = (pet.streak ?? 0) > 0
+    // 2) Recompensa + streak + game loop
+    const { streak, lastStreakDate } = computeNewStreak(pet)
+    const hasStreak = streak > 0
     const reward = calculateTaskReward(task, false, hasStreak)
-    const updatedPet = addCoins(addXp(pet, reward.xp), reward.coins)
-    await updatePet(updatedPet)
+
+    // Base: XP + coins
+    let updatedPet = addCoins(addXp(pet, reward.xp), reward.coins)
+
+    // Game loop: completar manual también da happy/resta energy
+    const moodUpdates = applyTaskCompletion(updatedPet)
+    const finalPet = { ...updatedPet, ...moodUpdates, streak, lastStreakDate }
+    await updatePet(finalPet)
 
     await loadTasks()
-    Alert.alert('✅ Tarea completada', `+${reward.xp} XP, +${reward.coins} 🪙`)
-    router.back()
+
+    // Mostrar popup con mood — el popup llama router.back() al cerrarse
+    const newMood = computeMood(finalPet, tasks)
+    setPopupMood(newMood)
+    setShowMoodPopup(true)
   }
 
   function handleRetry() {
@@ -185,6 +237,19 @@ export default function CameraScreen() {
           </View>
         )}
       </View>
+
+      {/* 🐾 Popup de reacción de la mascota al completar/saltar tarea */}
+      <MoodPopup
+        visible={showMoodPopup}
+        mood={popupMood}
+        petName={pet?.name}
+        species="default"
+        onDismiss={() => {
+          setShowMoodPopup(false)
+          router.back()
+        }}
+        autoHideMs={2500}
+      />
     </RetroScreen>
   )
 }

@@ -30,7 +30,8 @@
       "expo-sqlite",
       "expo-status-bar",
       "expo-camera",
-      "./plugins/withAppBlocker"
+      "./plugins/withAppBlocker",
+      "expo-secure-store"
     ],
     "extra": {
       "router": {},

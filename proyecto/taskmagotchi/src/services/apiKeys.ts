@@ -1,48 +1,32 @@
 /**
- * Runtime API Key Storage
+ * API Key Storage — uses expo-secure-store (encrypted keystore).
  *
- * Allows users to configure API keys at runtime via settings,
- * falling back to process.env.EXPO_PUBLIC_* for build-time defaults.
- *
- * Keys are persisted in SQLite so they survive app restarts.
+ * Keys survive app restarts but are NOT exportable via ADB backup
+ * (unlike the old SQLite storage).
  */
 
-import { getDb } from './database'
+import * as SecureStore from 'expo-secure-store'
 
-const KEYS_TABLE = 'api_keys'
+const STORE_KEYS = {
+  GROQ: 'api_key_groq',
+  GEMINI: 'api_key_gemini',
+} as const
 
-/**
- * Ensure the api_keys table exists. Called lazily on first read/write.
- */
-async function ensureTable(): Promise<void> {
-  const db = getDb()
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS ${KEYS_TABLE} (
-      key TEXT PRIMARY KEY NOT NULL,
-      value TEXT NOT NULL DEFAULT ''
-    );
-  `)
-}
+type KeyName = keyof typeof STORE_KEYS
 
 /**
- * Get a runtime API key. Checks DB first, then falls back to
+ * Get a runtime API key. Checks secure store first, then falls back to
  * process.env.EXPO_PUBLIC_* build-time variable.
  */
-export async function getApiKey(name: 'GROQ' | 'GEMINI'): Promise<string | null> {
-  // 1) Check runtime DB storage
+export async function getApiKey(name: KeyName): Promise<string | null> {
   try {
-    await ensureTable()
-    const db = getDb()
-    const row = await db.getFirstAsync<{ value: string }>(
-      `SELECT value FROM ${KEYS_TABLE} WHERE key = ?`,
-      name
-    )
-    if (row && row.value) return row.value
+    const stored = await SecureStore.getItemAsync(STORE_KEYS[name])
+    if (stored) return stored
   } catch {
-    // DB not ready yet — fall through to env
+    // SecureStore not available (web, SSR) — fall through
   }
 
-  // 2) Fall back to build-time env var
+  // Fall back to build-time env var
   const envKey = `EXPO_PUBLIC_${name}_API_KEY`
   const envVal = (process.env as Record<string, string | undefined>)[envKey]
   if (envVal && envVal.length > 0 && !envVal.includes('tu_key')) return envVal
@@ -51,42 +35,26 @@ export async function getApiKey(name: 'GROQ' | 'GEMINI'): Promise<string | null>
 }
 
 /**
- * Save a runtime API key to SQLite. Persists across app restarts.
+ * Save a runtime API key to secure store. Persists across app restarts.
  */
-export async function setApiKey(name: 'GROQ' | 'GEMINI', value: string): Promise<void> {
-  await ensureTable()
-  const db = getDb()
-  await db.runAsync(
-    `INSERT OR REPLACE INTO ${KEYS_TABLE} (key, value) VALUES (?, ?)`,
-    name,
-    value.trim()
-  )
+export async function setApiKey(name: KeyName, value: string): Promise<void> {
+  await SecureStore.setItemAsync(STORE_KEYS[name], value.trim())
 }
 
 /**
  * Delete a stored API key (revert to env var fallback).
  */
-export async function deleteApiKey(name: 'GROQ' | 'GEMINI'): Promise<void> {
-  await ensureTable()
-  const db = getDb()
-  await db.runAsync(
-    `DELETE FROM ${KEYS_TABLE} WHERE key = ?`,
-    name
-  )
+export async function deleteApiKey(name: KeyName): Promise<void> {
+  await SecureStore.deleteItemAsync(STORE_KEYS[name])
 }
 
 /**
- * Check whether a key exists in runtime storage (ignoring env vars).
+ * Check whether a key exists in secure store (ignoring env vars).
  */
-export async function hasStoredApiKey(name: 'GROQ' | 'GEMINI'): Promise<boolean> {
+export async function hasStoredApiKey(name: KeyName): Promise<boolean> {
   try {
-    await ensureTable()
-    const db = getDb()
-    const row = await db.getFirstAsync<{ value: string }>(
-      `SELECT value FROM ${KEYS_TABLE} WHERE key = ?`,
-      name
-    )
-    return !!(row && row.value)
+    const stored = await SecureStore.getItemAsync(STORE_KEYS[name])
+    return !!stored
   } catch {
     return false
   }

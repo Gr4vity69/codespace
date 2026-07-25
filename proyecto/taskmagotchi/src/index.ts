@@ -14,19 +14,20 @@ export type {
 export { initDatabase, getDb } from './services/database'
 export { saveConversation, loadRecentConversations, getTodaysConversations, clearConversationHistory, formatConversationSummary } from './services/conversationMemory'
 export { verifyTaskCompletion } from './services/ai'
-export { getApiKey, saveApiKey } from './services/apiKeys'
+export { getApiKey, setApiKey } from './services/apiKeys'
 export {
-  startBlockingService, stopBlockingService, isBlockingAvailable,
+  startBlockingService, stopBlockingService, isServiceRunning, isBlockingAvailable,
   getInstalledApps, getBlockedApps, addBlockedApp, removeBlockedApp,
   getCurrentForegroundApp, checkForegroundBlocked,
   showBlockingOverlay, hideBlockingOverlay,
   requestOverlayPermission, requestUsageStatsPermission, checkUsageStatsPermission,
-  requestAccessibilityService,
+  requestAccessibilityService, isAccessibilityServiceEnabled,
   setTemporaryUnlock, getTemporaryUnlockRemaining,
+  syncBlockedAppsToNative, syncPetMoodToNative, checkAutoBlockingByMood,
   isBlockedApp, isInBreakTime,
 } from './services/blocking'
 export { getApps, upsertApp } from './services/settingsDb'
-export { purchaseReward, getUserRewards, useReward, checkActiveRewards } from './services/shopService'
+export { purchaseReward, getUserRewards, getRewards, isDayOff } from './services/shopService'
 export { sendMessage, sendMessageWithMemory } from './services/groqChat'
 
 // Stores

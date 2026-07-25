@@ -6,7 +6,8 @@ import {
 import { sendMessageWithMemory } from '../../src/services/groqChat'
 import { useTaskStore } from '../../src/store/taskStore'
 import { usePetStore } from '../../src/store/petStore'
-import { getMoodFromTasks } from '../../src/utils/petEngine'
+import { computeMood, getProactiveSuggestion, shouldRecommendBlocking } from '../../src/utils/petGameLoop'
+import { checkAutoBlockingByMood } from '../../src/services/blocking'
 import { timeStringToTimestamp, formatTimestampToTime } from '../../src/utils/timeHelpers'
 import { getApps, upsertApp } from '../../src/services/settingsDb'
 import { loadRecentConversations, saveConversation, formatConversationSummary } from '../../src/services/conversationMemory'
@@ -32,28 +33,60 @@ export default function ChatScreen() {
   const [context, setContext] = useState<'planning' | 'motivation' | 'general'>('planning')
   const flatListRef = useRef<FlatList>(null)
 
-  const skinMood = getMoodFromTasks(todayTasks, pet?.streak ?? 0)
+  const skinMood = pet ? computeMood(pet, todayTasks) : 'normal'
 
   useEffect(() => {
     flatListRef.current?.scrollToEnd({ animated: true })
   }, [messages])
 
-  useEffect(() => {
-    ;(async () => {
-      const history = await loadRecentConversations(6)
-      if (history.length > 0) {
-        const pastMessages: ChatMessage[] = []
-        for (const entry of history) {
-          pastMessages.push({ role: 'user', content: entry.userMessage })
-          const clean = entry.aiResponse.replace(/\{[\s\S]*?\}/, '').trim()
-          if (clean) pastMessages.push({ role: 'assistant', content: clean })
-        }
-        if (pastMessages.length > 0) {
-          setMessages(prev => [...prev, ...pastMessages])
-        }
-      }
-    })()
-  }, [])
+useEffect(() => {
+     ;(async () => {
+       const history = await loadRecentConversations(6)
+       if (history.length > 0) {
+         const pastMessages: ChatMessage[] = []
+         for (const entry of history) {
+           pastMessages.push({ role: 'user', content: entry.userMessage })
+           const clean = entry.aiResponse.replace(/\{[\s\S]*?\}/, '').trim()
+           if (clean) pastMessages.push({ role: 'assistant', content: clean })
+         }
+         if (pastMessages.length > 0) {
+           setMessages(prev => [...prev, ...pastMessages])
+         }
+       }
+     })()
+   }, [])
+   
+   // 🐾 Proactive pet suggestions and auto-blocking check
+   useEffect(() => {
+     ;(async () => {
+       // Check for auto-blocking by mood
+       const { shouldBlock, mood, reason } = await checkAutoBlockingByMood()
+       if (shouldBlock) {
+         console.log(`🚨 Chat auto-block triggered: ${reason}`)
+       }
+       
+       // Get proactive suggestion based on current mood
+       const pet = usePetStore.getState().pet
+       const todayTasks = useTaskStore.getState().todayTasks
+       if (pet && todayTasks.length > 0) {
+         const currentMood = computeMood(pet, todayTasks)
+         const pendingTasks = todayTasks.filter(t => t.status === 'pending' || t.status === 'in_progress')
+         
+         // Get a proactive suggestion if we have pending tasks
+         const suggestion = getProactiveSuggestion(currentMood, pendingTasks)
+         if (suggestion) {
+           // Add the suggestion as a message from the pet
+           setMessages(prev => [...prev, {
+             role: 'assistant',
+             content: suggestion
+           }])
+           
+           // Save this suggestion to conversation memory
+           await saveConversation('System check for proactive suggestion', suggestion, context)
+         }
+       }
+     })()
+   }, [todayTasks, pet]) // Re-run when tasks or pet change
 
   async function handleBlockResponse(cmd: AIBlockResponse) {
     if (cmd.action === 'list_blocked') {

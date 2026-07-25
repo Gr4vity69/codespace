@@ -1,185 +1,243 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native'
-import { RetroPanel, RetroScreen, RetroSectionTitle, retroColors, monoFont } from '../../src/components/retroUi'
-import { useTaskStore } from '../../src/store/taskStore'
-import { formatTimestampToTime } from '../../src/utils/timeHelpers'
-import type { Task } from '../../src/types'
-
-function PriorityBadge({ priority }: { priority: Task['priority'] }) {
-  const color = priority === 'high' ? retroColors.danger
-    : priority === 'medium' ? '#f3b64d'
-    : retroColors.success
-  const label = priority === 'high' ? 'ALTA' : priority === 'medium' ? 'MEDIA' : 'BAJA'
-  return (
-    <View style={[styles.badge, { backgroundColor: color }]}>
-      <Text style={styles.badgeText}>{label}</Text>
-    </View>
-  )
-}
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, ActivityIndicator, Platform, TextInput } from 'react-native';
+import { Calendar } from 'react-native-calendars';
+import { RetroPanel, RetroScreen, RetroSectionTitle, retroColors, monoFont, RetroInputShell } from '../../src/components/retroUi';
+import { useTaskStore } from '../../src/store/taskStore';
+import { formatTimestampToTime } from '../../src/utils/timeHelpers';
+import type { Task } from '../../src/types';
+import { usePetStore } from '../../src/store/petStore';
+import { computeMood, getProactiveSuggestion } from '../../src/utils/petGameLoop';
+import { PixelButton } from '../../src/components/retroUi';
 
 export default function AgendaScreen() {
-  const { todayTasks } = useTaskStore()
+  const { todayTasks, tasks, updateTask: updateTaskStore, loadTasks } = useTaskStore();
+  const { pet } = usePetStore();
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [markedDates, setMarkedDates] = useState({});
 
-  // Split tasks: scheduled (have start time) vs unscheduled
-  const scheduledTasks = todayTasks
-    .filter(t => t.scheduledStart != null)
-    .sort((a, b) => (a.scheduledStart ?? 0) - (b.scheduledStart ?? 0))
+  // Compute mood for theme
+  const mood = pet ? computeMood(pet, todayTasks) : 'normal';
 
-  const unscheduledTasks = todayTasks
-    .filter(t => t.scheduledStart == null)
-    .sort((a, b) => (a.createdAt) - (b.createdAt))
+  // Background color based on mood
+  const bgColor = mood === 'happy' ? '#0d1f15' : mood === 'sad' ? '#0d131f' : mood === 'angry' ? '#1f0d0d' : '#15101d';
 
-  const hasTasks = scheduledTasks.length > 0 || unscheduledTasks.length > 0
+  useEffect(() => {
+    // Update marked dates for calendar (days with tasks)
+    const marked: { [key: string]: { selected: boolean; selectedColor?: string } } = {};
+    tasks.forEach(task => {
+      if (task.scheduledStart) {
+        const date = new Date(task.scheduledStart);
+        const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        marked[dateString] = { selected: true, selectedColor: retroColors.accent };
+      }
+    });
+    setMarkedDates(marked);
+  }, [tasks]);
 
-  function renderTaskCard(task: Task, showTime: boolean) {
-    return (
-      <RetroPanel key={task.id} style={[styles.taskCard, {
-        borderLeftColor: task.priority === 'high' ? retroColors.danger
-          : task.priority === 'medium' ? '#f3b64d'
-          : retroColors.success,
-        borderLeftWidth: 4,
-      }]}>
-        <View style={styles.taskHeader}>
-          <Text style={styles.taskTitle} numberOfLines={1}>{task.title}</Text>
-          <PriorityBadge priority={task.priority} />
-        </View>
-        {showTime && task.scheduledStart && (
-          <Text style={styles.taskTime}>
-            {formatTimestampToTime(task.scheduledStart)}
-            {task.scheduledEnd ? ` — ${formatTimestampToTime(task.scheduledEnd)}` : ''}
-            {` · ${task.estimatedMinutes} min`}
-          </Text>
-        )}
-        {!showTime && (
-          <Text style={styles.taskTime}>{task.estimatedMinutes} min</Text>
-        )}
-        {task.description ? (
-          <Text style={styles.taskDesc} numberOfLines={2}>{task.description}</Text>
-        ) : null}
-      </RetroPanel>
-    )
-  }
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const handleDayPress = (dayData: { dateString: string; day: number; month: number; year: number; timestamp: number }) => {
+    const [year, month, day] = dayData.dateString.split('-').map(Number);
+    setSelectedDate(new Date(year, month - 1, day));
+    setModalVisible(true);
+  };
+
+  const handleTaskPress = (task: Task) => {
+    setEditingTask(task);
+    setTaskTitle(task.title);
+    setTaskDescription(task.description || '');
+    setModalVisible(true);
+  };
+
+  const handleSaveTask = async () => {
+    if (!editingTask) return;
+    setLoading(true);
+    try {
+      await updateTaskStore(editingTask.id, {
+        title: taskTitle,
+        description: taskDescription,
+      });
+      setEditingTask(null);
+      setTaskTitle('');
+      setTaskDescription('');
+      setModalVisible(false);
+    } catch (e) {
+      console.error('Failed to update task:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingTask(null);
+    setTaskTitle('');
+    setTaskDescription('');
+    setModalVisible(false);
+  };
+
+  const tasksForSelectedDate = tasks.filter(task => {
+    if (!task.scheduledStart) return false;
+    const taskDate = new Date(task.scheduledStart);
+    return taskDate.toDateString() === selectedDate.toDateString();
+  });
 
   return (
-    <RetroScreen>
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Header */}
-        <View style={styles.topRow}>
+    <RetroScreen style={{ backgroundColor: bgColor }}>
+      <View style={styles.container}>
+        <View style={styles.header}>
           <View>
             <Text style={styles.brand}>AGENDA</Text>
-            <Text style={styles.brandSub}>plan del día</Text>
+            <Text style={styles.brandSub}>calendario mensual</Text>
           </View>
-          <View style={styles.dateBadge}>
-            <Text style={styles.dateBadgeText}>
-              {new Date().toLocaleDateString('es', {
-                weekday: 'short', day: 'numeric', month: 'short',
-              }).toUpperCase()}
-            </Text>
-          </View>
+          <TouchableOpacity onPress={() => setSelectedDate(new Date())} style={styles.todayBtn}>
+            <Text style={styles.todayBtnText}>HOY</Text>
+          </TouchableOpacity>
         </View>
 
-        {!hasTasks ? (
-          <RetroPanel style={styles.emptyPanel}>
-            <Text style={styles.emptyIcon}>☰</Text>
-            <Text style={styles.emptyText}>Planifica tu día con el chat</Text>
-            <Text style={styles.emptySub}>
-              Habla con Magotchi para organizar tus tareas{'\n'}y aparecerán aquí con horario
-            </Text>
-          </RetroPanel>
-        ) : (
-          <>
-            {/* Scheduled tasks — timeline */}
-            {scheduledTasks.length > 0 && (
-              <View style={styles.section}>
-                <RetroSectionTitle>CRONOGRAMA</RetroSectionTitle>
-                <View style={styles.timeline}>
-                  {scheduledTasks.map((task, i) => (
-                    <View key={task.id} style={styles.timelineItem}>
-                      <View style={styles.timelineLeft}>
-                        <View style={styles.timelineDot} />
-                        {i < scheduledTasks.length - 1 && (
-                          <View style={styles.timelineLine} />
-                        )}
-                      </View>
-                      {renderTaskCard(task, true)}
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
+        <Calendar
+          markedDates={markedDates}
+          onDayPress={handleDayPress}
+          enableSwipeMonths={true}
+          monthFormat={'MMMM yyyy'}
+          hideArrows={false}
+          hideExtraDays={false}
+          renderArrow={(arrowDirection: string) => (
+            <TouchableOpacity style={{ padding: 8, justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ fontSize: 20, color: retroColors.text }}>{arrowDirection === 'left' ? '‹' : '›'}</Text>
+            </TouchableOpacity>
+          )}
+          theme={{
+            todayTextColor: retroColors.text,
+            selectedDayBackgroundColor: retroColors.accent,
+            selectedDayTextColor: retroColors.background,
+          }}
+        />
 
-            {/* Unscheduled tasks */}
-            {unscheduledTasks.length > 0 && (
-              <View style={styles.section}>
-                <RetroSectionTitle>
-                  SIN HORARIO · {unscheduledTasks.length}
-                </RetroSectionTitle>
-                <View style={styles.unscheduledList}>
-                  {unscheduledTasks.map(task => renderTaskCard(task, false))}
-                </View>
+        {/* Task Modal */}
+        <Modal visible={modalVisible} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {editingTask ? 'EDITAR TAREA' : `TAREAS DEL ${selectedDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`}
+                </Text>
+                <TouchableOpacity onPress={handleCancel} style={styles.modalClose}>
+                  <Text style={styles.modalCloseText}>✕</Text>
+                </TouchableOpacity>
               </View>
-            )}
-          </>
-        )}
 
-        {/* Próximamente */}
-        <View style={styles.section}>
-          <RetroSectionTitle>PRÓXIMAMENTE</RetroSectionTitle>
-          <RetroPanel style={styles.soonPanel}>
-            <Text style={styles.soonItem}>▸ Vista calendario completo tipo Google Calendar</Text>
-            <Text style={styles.soonItem}>▸ Bloques visuales por hora</Text>
-            <Text style={styles.soonItem}>▸ Editar plan directamente desde la agenda</Text>
-          </RetroPanel>
-        </View>
-      </ScrollView>
+              {editingTask ? (
+                <View style={styles.modalBody}>
+                  <Text style={styles.modalLabel}>Título</Text>
+                  <RetroInputShell>
+                    <TextInput
+                      style={styles.input}
+                      value={taskTitle}
+                      onChangeText={setTaskTitle}
+                      placeholder="Título de la tarea"
+                    />
+                  </RetroInputShell>
+                  <Text style={styles.modalLabel}>Descripción</Text>
+                  <RetroInputShell>
+                    <TextInput
+                      value={taskDescription}
+                      onChangeText={setTaskDescription}
+                      placeholder="Descripción (opcional)"
+                      multiline
+                      style={[styles.input, styles.inputMultiline]}
+                    />
+                  </RetroInputShell>
+                  <View style={styles.modalActions}>
+                    <PixelButton onPress={handleCancel} variant="ghost">CANCELAR</PixelButton>
+                    <PixelButton onPress={handleSaveTask} disabled={loading}>GUARDAR</PixelButton>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.modalBody}>
+                  {tasksForSelectedDate.length === 0 ? (
+                    <Text style={styles.modalEmptyText}>No hay tareas para este día</Text>
+                  ) : (
+                    <FlatList
+                      data={tasksForSelectedDate}
+                      keyExtractor={item => item.id.toString()}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity onPress={() => handleTaskPress(item)} style={styles.taskItem}>
+                          <View style={styles.taskLeft}>
+                            <View style={{ width: 4, backgroundColor: item.priority === 'high' ? retroColors.danger : item.priority === 'medium' ? '#f3b64d' : retroColors.success }} />
+                            <Text style={styles.taskTitle}>{item.title}</Text>
+                          </View>
+                          <View style={styles.taskRight}>
+                            <Text style={styles.taskTime}>{formatTimestampToTime(item.scheduledStart ?? 0)}</Text>
+                            {item.whitelistedApps.length > 0 && (
+                              <Text style={styles.taskApps}>{item.whitelistedApps.join(', ')}</Text>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      )}
+                    />
+                  )}
+                  <View style={styles.addTaskSection}>
+                    <PixelButton onPress={() => {
+                      const suggestion = getProactiveSuggestion(
+                        mood,
+                        todayTasks.filter(t => t.status === 'pending' || t.status === 'in_progress')
+                      );
+                      setEditingTask(null);
+                      setTaskTitle(suggestion ?? '');
+                      setTaskDescription('');
+                    }} variant="ghost">
+                      AÑADIR SUGERENCIA
+                    </PixelButton>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        </Modal>
+      </View>
     </RetroScreen>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 12, paddingBottom: 32 },
-
-  // Header
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  container: { flex: 1, padding: 0 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: retroColors.panel,
+  },
   brand: { color: retroColors.text, fontSize: 18, fontFamily: monoFont, fontWeight: '800', letterSpacing: 2 },
-  brandSub: { color: retroColors.muted, fontSize: 10, fontFamily: monoFont, letterSpacing: 1.2, marginTop: 2 },
-  dateBadge: {
-    borderWidth: 2, borderColor: retroColors.border,
-    backgroundColor: retroColors.panel, paddingHorizontal: 8, paddingVertical: 4,
-  },
-  dateBadgeText: { color: retroColors.text, fontSize: 10, fontFamily: monoFont, letterSpacing: 0.8 },
+  brandSub: { color: retroColors.muted, fontSize: 10, fontFamily: monoFont, letterSpacing: 1.2 },
+  todayBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: retroColors.text, borderRadius: 4 },
+  todayBtnText: { color: retroColors.background, fontWeight: '600', fontFamily: monoFont },
 
-  // Sections
-  section: { gap: 8 },
-
-  // Empty
-  emptyPanel: { alignItems: 'center', gap: 6, padding: 18 },
-  emptyIcon: { fontSize: 26, color: retroColors.text },
-  emptyText: { fontSize: 14, fontWeight: '700', color: retroColors.text, fontFamily: monoFont },
-  emptySub: { fontSize: 11, color: retroColors.muted, fontFamily: monoFont, textAlign: 'center' },
-
-  // Timeline
-  timeline: { gap: 0 },
-  timelineItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, minHeight: 76 },
-  timelineLeft: { width: 12, alignItems: 'center' },
-  timelineDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: retroColors.text, marginTop: 14, zIndex: 1 },
-  timelineLine: {
-    position: 'absolute', top: 26, bottom: 0, width: 2,
-    backgroundColor: 'rgba(247, 240, 219, 0.2)',
-  },
-
-  // Task card
-  taskCard: { flex: 1, gap: 4, paddingVertical: 10 },
-  taskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  taskTitle: { color: retroColors.text, fontSize: 13, fontWeight: '700', fontFamily: monoFont, flex: 1 },
-  taskTime: { color: retroColors.muted, fontSize: 10, fontFamily: monoFont },
-  taskDesc: { color: retroColors.muted, fontSize: 11, fontFamily: monoFont },
-  badge: { paddingHorizontal: 6, paddingVertical: 2 },
-  badgeText: { color: '#000', fontSize: 9, fontFamily: monoFont, fontWeight: '700' },
-
-  // Unscheduled
-  unscheduledList: { gap: 8 },
-
-  // Soon
-  soonPanel: { gap: 6 },
-  soonItem: { color: retroColors.text, fontSize: 12, fontFamily: monoFont, lineHeight: 18 },
-})
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalContent: { width: '90%', maxWidth: 320, backgroundColor: retroColors.panel, borderRadius: 8, padding: 16 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: retroColors.text, fontFamily: monoFont },
+  modalClose: { padding: 4 },
+  modalCloseText: { fontSize: 18, color: retroColors.text },
+  modalBody: { gap: 12 },
+  modalLabel: { fontSize: 12, fontWeight: '600', color: retroColors.text, fontFamily: monoFont },
+  input: { color: retroColors.text, fontFamily: monoFont, padding: 8, backgroundColor: retroColors.background, borderWidth: 1, borderColor: retroColors.border, borderRadius: 4 },
+  inputMultiline: { minHeight: 80, textAlignVertical: 'top' },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  modalEmptyText: { textAlign: 'center', color: retroColors.muted, fontStyle: 'italic' },
+  addTaskSection: { marginTop: 12 },
+  taskItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: retroColors.borderSoft },
+  taskLeft: { flexDirection: 'row', alignItems: 'center' },
+  taskTitle: { flex: 1, fontSize: 14, color: retroColors.text, fontFamily: monoFont },
+  taskRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  taskTime: { fontSize: 12, color: retroColors.muted, fontFamily: monoFont },
+  taskApps: { fontSize: 10, color: retroColors.muted, fontFamily: monoFont },
+  day: { marginVertical: 4, justifyContent: 'center' },
+});

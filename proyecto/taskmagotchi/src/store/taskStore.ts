@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Task } from '../types'
 import { getDb } from '../services/database'
 import { calculatePenalty } from '../utils/petEngine'
+import { applyOverduePenalty } from '../utils/petGameLoop'
 import { usePetStore } from './petStore'
 
 // Track tasks that already had penalty applied (in-memory, resets on app restart)
@@ -48,6 +49,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
       // Apply penalty for overdue tasks (one-time per session)
       const now = Date.now()
+      let newOverdueCount = 0
       for (const task of tasks) {
         if (penalizedTasks.has(task.id)) continue
         if (task.status !== 'pending' && task.status !== 'in_progress') continue
@@ -63,7 +65,17 @@ export const useTaskStore = create<TaskState>((set, get) => ({
               console.warn(`[penalty] Task #${task.id} overdue: ${penalty.coins} coins`)
             }
           }
+          newOverdueCount++
           penalizedTasks.add(task.id)
+        }
+      }
+
+      // 🐾 Penalización de felicidad por tareas vencidas
+      if (newOverdueCount > 0) {
+        const pet = usePetStore.getState().pet
+        if (pet) {
+          const moodPenalty = applyOverduePenalty(pet, newOverdueCount)
+          await usePetStore.getState().updatePet(moodPenalty)
         }
       }
 
